@@ -15,7 +15,7 @@ import {
   type StringSelectMenuInteraction,
   type UserSelectMenuInteraction,
 } from "discord.js";
-import { ELEMENTS } from "../../../types.js";
+import { ELEMENTS, type Element } from "../../../types.js";
 import * as ladderRepo from "../../../sheets/ladderRepo.js";
 import * as bannedRepo from "../../../sheets/bannedRepo.js";
 import { ALL_ELEMENTS, type BanScope } from "../../../sheets/bannedRepo.js";
@@ -25,7 +25,9 @@ import { closeMatchChannel } from "../../matchChannels.js";
 import { notify } from "../../notify.js";
 import { refreshTop10Panel } from "../../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../../activeChallengesPanel.js";
+import { scheduleReplyCleanup, scheduleMessageCleanup } from "../../ephemeralCleanup.js";
 import { buildLadderCharacterSelectRow } from "./characterSelect.js";
+import { formatElement } from "../../../util/formatElement.js";
 
 const REMOVE_CHARACTER_SELECT_ID = "admin_remove_character";
 const REMOVE_CONFIRM_PREFIX = "admin_remove_confirm";
@@ -41,6 +43,7 @@ const UNBAN_SELECT_ID = "admin_unban_select";
 async function requireLeagueManager(interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction): Promise<boolean> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return false;
   }
   return true;
@@ -59,7 +62,12 @@ async function getDisplayName(client: Client, guildId: string | null, userId: st
 }
 
 function elementScopeOptions() {
-  return [...ELEMENTS.map((e) => ({ label: e, value: e })), { label: "All elements", value: ALL_ELEMENTS }];
+  return [...ELEMENTS.map((e) => ({ label: formatElement(e), value: e })), { label: "All elements", value: ALL_ELEMENTS }];
+}
+
+/** Formats a BanScope (a specific Element or the "ALL" sentinel) for display. */
+function formatScope(scope: BanScope): string {
+  return scope === ALL_ELEMENTS ? "all elements" : formatElement(scope);
 }
 
 // ---------- Remove ----------
@@ -70,6 +78,7 @@ export async function handleRemoveStart(interaction: ButtonInteraction): Promise
   const ladder = await ladderRepo.getLadder();
   if (ladder.length === 0) {
     await interaction.reply({ content: "The ladder is empty.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -89,6 +98,7 @@ export async function handleRemoveCharacterSelect(interaction: StringSelectMenuI
   const target = ladder.find((r) => r.sheetRow === sheetRow);
   if (!target) {
     await interaction.update({ content: "That entry isn't on the ladder anymore.", components: [] });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -100,7 +110,7 @@ export async function handleRemoveCharacterSelect(interaction: StringSelectMenuI
     new ButtonBuilder().setCustomId(REMOVE_CANCEL_ID).setLabel("Cancel").setStyle(ButtonStyle.Secondary),
   );
   await interaction.update({
-    content: `Remove **${target.characterName}** (${target.element}) — <@${target.discordUserId}>? Any active match involving it will be cancelled.`,
+    content: `Remove **${target.characterName}** (${formatElement(target.element)}) — <@${target.discordUserId}>? Any active match involving it will be cancelled.`,
     components: [row],
   });
 }
@@ -110,6 +120,7 @@ export async function handleRemoveResolve(interaction: ButtonInteraction): Promi
 
   if (interaction.customId === REMOVE_CANCEL_ID) {
     await interaction.update({ content: "Removal cancelled — no changes made.", components: [] });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -127,21 +138,25 @@ export async function handleRemoveResolve(interaction: ButtonInteraction): Promi
   }
 
   if (removedEntries.length === 0) {
-    await interaction.followUp({ content: "Nothing to remove — that entry may already be gone.", ephemeral: true });
+    const followUp = await interaction.followUp({ content: "Nothing to remove — that entry may already be gone.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
+    scheduleMessageCleanup(followUp);
     return;
   }
 
-  await interaction.followUp({
-    content: `Removed ${removedEntries.map((e) => `**${e.characterName}** (${e.element})`).join(", ")}.`,
+  const followUp = await interaction.followUp({
+    content: `Removed ${removedEntries.map((e) => `**${e.characterName}** (${formatElement(e.element)})`).join(", ")}.`,
     ephemeral: true,
   });
+  scheduleReplyCleanup(interaction);
+  scheduleMessageCleanup(followUp);
 
   const embed = new EmbedBuilder()
     .setDescription(
-      `🗑️ <@${interaction.user.id}> removed <@${userId}>'s ${removedEntries.map((e) => `**${e.characterName}** (${e.element})`).join(", ")} from the ladder.`,
+      `🗑️ <@${interaction.user.id}> removed <@${userId}>'s ${removedEntries.map((e) => `**${e.characterName}** (${formatElement(e.element)})`).join(", ")} from the ladder.`,
     )
     .setColor(0x992d22);
-  await notify.rankings(interaction.client, { embeds: [embed] });
+  await notify.challenges(interaction.client, { embeds: [embed] });
   await refreshTop10Panel(interaction.client).catch((err) => console.error("Failed to refresh top 10 panel:", err));
 }
 
@@ -215,12 +230,13 @@ export async function handleBanReasonModal(interaction: ModalSubmitInteraction):
   }
 
   await interaction.editReply({
-    content: `Banned <@${userId}> (${scope === ALL_ELEMENTS ? "all elements" : scope}).${removedEntries.length > 0 ? ` Removed ${removedEntries.length} ladder entr${removedEntries.length === 1 ? "y" : "ies"}.` : ""}`,
+    content: `Banned <@${userId}> (${formatScope(scope)}).${removedEntries.length > 0 ? ` Removed ${removedEntries.length} ladder entr${removedEntries.length === 1 ? "y" : "ies"}.` : ""}`,
   });
+  scheduleReplyCleanup(interaction);
 
   const embed = new EmbedBuilder()
     .setDescription(
-      `🚫 <@${interaction.user.id}> banned <@${userId}> from **${scope === ALL_ELEMENTS ? "the ladder" : scope}**.\n**Reason:** ${reason}`,
+      `🚫 <@${interaction.user.id}> banned <@${userId}> from **${scope === ALL_ELEMENTS ? "the ladder" : formatElement(scope)}**.\n**Reason:** ${reason}`,
     )
     .setColor(0x992d22);
   await notify.leagueManagers(interaction.client, { embeds: [embed] });
@@ -237,6 +253,7 @@ export async function handleUnbanStart(interaction: ButtonInteraction): Promise<
   const bans = await bannedRepo.getAllBans();
   if (bans.length === 0) {
     await interaction.reply({ content: "There are no active bans.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -245,7 +262,7 @@ export async function handleUnbanStart(interaction: ButtonInteraction): Promise<
     .setPlaceholder("Choose a ban to lift")
     .addOptions(
       bans.slice(0, 25).map((b) => ({
-        label: `${b.discordName} — ${b.element === ALL_ELEMENTS ? "All elements" : b.element}`,
+        label: `${b.discordName} — ${b.element === ALL_ELEMENTS ? "All elements" : formatElement(b.element as Element)}`,
         description: b.reason.slice(0, 100) || undefined,
         value: String(b.sheetRow),
       })),
@@ -262,6 +279,7 @@ export async function handleUnbanSelect(interaction: StringSelectMenuInteraction
 
   const sheetRow = Number.parseInt(interaction.values[0], 10);
   await interaction.update({ content: "Ban lifted.", components: [] });
+  scheduleReplyCleanup(interaction);
   await unban(sheetRow);
 
   const embed = new EmbedBuilder().setDescription(`✅ <@${interaction.user.id}> lifted a ban.`).setColor(0x2ecc71);

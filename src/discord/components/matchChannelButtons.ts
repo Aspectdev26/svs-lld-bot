@@ -11,6 +11,7 @@ import { isDodgeEligible } from "../../domain/dodgeService.js";
 import { submitDodgeRequest } from "../dodgeFlow.js";
 import { buildWinnerPrompt } from "../reportWinFlow.js";
 import { notify } from "../notify.js";
+import { formatElement } from "../../util/formatElement.js";
 
 async function handleReportWin(interaction: ButtonInteraction, matchId: string): Promise<void> {
   const prompt = await buildWinnerPrompt(matchId, interaction.user.id);
@@ -100,7 +101,7 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
     .setTitle("Match extension request")
     .setDescription(
       `⏳ <@${interaction.user.id}> requested a 2-day extension for match \`${match.matchId}\`\n` +
-        `(<@${match.challengerUserId}> vs <@${match.defenderUserId}>, ${match.challengerElement} vs ${match.defenderElement}).\n` +
+        `(<@${match.challengerUserId}> vs <@${match.defenderUserId}>, ${formatElement(match.challengerElement)} vs ${formatElement(match.defenderElement)}).\n` +
         `Current expiry: <t:${Math.floor(Date.parse(match.expiresAt) / 1000)}:F>`,
     )
     .setColor(0xf39c12);

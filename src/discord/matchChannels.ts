@@ -12,6 +12,7 @@ import {
 } from "discord.js";
 import { config } from "../config.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
+import { formatElement } from "../util/formatElement.js";
 import type { LadderRow, MatchRow } from "../types.js";
 
 function slug(name: string): string {
@@ -58,7 +59,7 @@ export async function createMatchChannel(
     name: `challenge-${slug(challenger.characterName)}-vs-${slug(defender.characterName)}`,
     type: ChannelType.GuildText,
     parent: category.id,
-    topic: `Match ${match.matchId}: ${challenger.characterName} (${challenger.element}) vs ${defender.characterName} (${defender.element})`,
+    topic: `Match ${match.matchId}: ${challenger.characterName} (${formatElement(challenger.element)}) vs ${defender.characterName} (${formatElement(defender.element)})`,
     // Explicit `type` on every overwrite: without it, discord.js tries to resolve each id against
     // its User/Role caches to guess the type, and throws if the user isn't cached (likely here,
     // since the bot doesn't proactively cache all guild members).
@@ -97,7 +98,7 @@ export async function createMatchChannel(
   const embed = new EmbedBuilder()
     .setTitle("Match channel")
     .setDescription(
-      `⚔️ <@${challenger.discordUserId}> (**${challenger.element}**) vs <@${defender.discordUserId}> (**${defender.element}**)\n\n` +
+      `⚔️ <@${challenger.discordUserId}> (**${formatElement(challenger.element)}**) vs <@${defender.discordUserId}> (**${formatElement(defender.element)}**)\n\n` +
         `Use this channel to arrange and play your match. Match expires <t:${expiresUnix}:F> (<t:${expiresUnix}:R>).\n\n` +
         `**Report Win** — either player can self-report the result once the match is played.\n` +
         `**Request Dodge** — if your opponent hasn't responded in 48+ hours, request a dodge (you'll need a screenshot).\n` +

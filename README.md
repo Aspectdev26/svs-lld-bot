@@ -22,6 +22,10 @@ requests with screenshot evidence.
   dodge, or extension — is deleted the moment a manager approves or denies it (rather than sitting there forever
   with disabled buttons), and the small "Approved/Denied by..." confirmation that replaces it in that channel
   auto-deletes itself 5 seconds later. Keeps the channel showing only what's still actually pending.
+- **Ephemeral replies clean up after themselves too**: in `#league-managers`, `#challenges`, and `#register`, every
+  personal (only-you-can-see) bot reply that reaches a terminal step of its flow — a final confirmation, or a
+  rejection that ends things right there — deletes itself 5 seconds later instead of sitting there needing a manual
+  "Dismiss Message" click. Prompts still mid-flow (waiting on your next click or selection) are left alone.
 - **Two separate channels split "issue a challenge" from "everything that happened"**: `#challenges` (the "Issue a
   Challenge" channel) just holds two pinned, standing panels — the **Challenge** button and the **Active
   Challenges** list (every currently pending match, refreshed after anything that creates, resolves, expires,
@@ -44,6 +48,9 @@ requests with screenshot evidence.
 - **Ladder**: one combined ranking. Each player can hold up to 3 rows (one per element they've signed up with),
   each with its own rank number and its own **character name** (the primary display identity everywhere — ladder
   listings, challenge targets, match channels — separate from the player's Discord name).
+- **Elements always carry their emoji**: ❄️ Cold, ⚡ Light, 🔥 Fire — anywhere an element name shows up in a bot
+  message, embed, select menu, or channel topic. The one exception is the rendered Top 10 leaderboard image, which
+  uses its own color-coding instead since canvas-rendered emoji isn't reliable across platforms.
 - **Challenges**: `/challenge` (or the pinned **Challenge** button in `#challenges`) lets you reach up to 3 ranks
   up the ladder, skipping any of your *own* other-element rows and any row whose player is on **Vacation** (neither
   counts against your range and neither can be targeted). If the target is in the top 10, you must be within 2
@@ -107,9 +114,9 @@ requests with screenshot evidence.
     that entry between Available and Vacation. This is the *only* way to set Vacation — there's no self-service
     command, so a player can't accidentally make themselves un-challengeable (or dodge a challenge) without a
     League Manager's say-so.
-  Every League Manager action is announced (to `#rankings` or the results channel as appropriate) so the whole
-  server can see what changed and who did it. A new `BannedUsers` tab tracks active bans (`Element` is either one
-  element or `ALL`).
+  Every League Manager action is announced in the results channel so the whole server can see what changed and who
+  did it — `#rankings` is left alone, reserved for the pinned Top 10 leaderboard only. A new `BannedUsers` tab
+  tracks active bans (`Element` is either one element or `ALL`).
 - **Top 10 leaderboard**: a pinned post in `#rankings` with a rendered leaderboard graphic (rank badges, character
   names, element/build, a Vacation tag) for the current top 10, plus a link to the full Google Sheet. It's the same
   message edited in place every time — refreshed automatically after anything that can change rank order (reported

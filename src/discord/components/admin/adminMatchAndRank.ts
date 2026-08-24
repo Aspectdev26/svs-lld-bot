@@ -22,6 +22,8 @@ import { closeMatchChannel } from "../../matchChannels.js";
 import { notify } from "../../notify.js";
 import { refreshTop10Panel } from "../../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../../activeChallengesPanel.js";
+import { scheduleReplyCleanup, scheduleMessageCleanup } from "../../ephemeralCleanup.js";
+import { formatElement } from "../../../util/formatElement.js";
 import type { Element } from "../../../types.js";
 
 const CANCEL_SELECT_ID = "admin_cancel_select";
@@ -38,6 +40,7 @@ async function requireLeagueManager(
 ): Promise<boolean> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return false;
   }
   return true;
@@ -51,6 +54,7 @@ export async function handleCancelMatchStart(interaction: ButtonInteraction): Pr
   const [pending, ladder] = await Promise.all([matchesRepo.getPendingMatches(), ladderRepo.getLadder()]);
   if (pending.length === 0) {
     await interaction.reply({ content: "There are no active matches to cancel.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -62,7 +66,7 @@ export async function handleCancelMatchStart(interaction: ButtonInteraction): Pr
     .setPlaceholder("Choose a match to cancel")
     .addOptions(
       pending.slice(0, 25).map((m) => ({
-        label: `${nameFor(m.challengerUserId, m.challengerElement)} vs ${nameFor(m.defenderUserId, m.defenderElement)} (${m.challengerElement})`,
+        label: `${nameFor(m.challengerUserId, m.challengerElement)} vs ${nameFor(m.defenderUserId, m.defenderElement)} (${formatElement(m.challengerElement)})`,
         value: m.matchId,
       })),
     );
@@ -92,6 +96,7 @@ export async function handleCancelMatchResolve(interaction: ButtonInteraction): 
 
   if (interaction.customId === CANCEL_CANCEL_ID) {
     await interaction.update({ content: "Never mind — no changes made.", components: [] });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -100,12 +105,16 @@ export async function handleCancelMatchResolve(interaction: ButtonInteraction): 
 
   const match = await forceCancelMatch(matchId);
   if (!match) {
-    await interaction.followUp({ content: "That match is no longer active.", ephemeral: true });
+    const followUp = await interaction.followUp({ content: "That match is no longer active.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
+    scheduleMessageCleanup(followUp);
     return;
   }
   await closeMatchChannel(interaction.client, match, "Force-cancelled by admin");
 
-  await interaction.followUp({ content: "Match cancelled.", ephemeral: true });
+  const followUp = await interaction.followUp({ content: "Match cancelled.", ephemeral: true });
+  scheduleReplyCleanup(interaction);
+  scheduleMessageCleanup(followUp);
 
   const embed = new EmbedBuilder()
     .setDescription(
@@ -154,6 +163,7 @@ export async function handleSetRankUserSelect(interaction: UserSelectMenuInterac
   const rows = await ladderRepo.getPlayerRows(userId);
   if (rows.length === 0) {
     await interaction.update({ content: "That player isn't on the ladder.", components: [] });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -165,7 +175,7 @@ export async function handleSetRankUserSelect(interaction: UserSelectMenuInterac
   const select = new StringSelectMenuBuilder()
     .setCustomId(`${SETRANK_ELEMENT_SELECT_PREFIX}:${userId}`)
     .setPlaceholder("Which entry?")
-    .addOptions(rows.map((r) => ({ label: `${r.element} (currently rank ${r.rank})`, value: r.element })));
+    .addOptions(rows.map((r) => ({ label: `${formatElement(r.element)} (currently rank ${r.rank})`, value: r.element })));
   await interaction.update({
     content: `<@${userId}> has ${rows.length} entries. Which one?`,
     components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
@@ -186,6 +196,7 @@ export async function handleSetRankModal(interaction: ModalSubmitInteraction): P
   const desiredRank = Number.parseInt(raw, 10);
   if (Number.isNaN(desiredRank) || desiredRank < 1) {
     await interaction.reply({ content: "That's not a valid rank number.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -196,22 +207,25 @@ export async function handleSetRankModal(interaction: ModalSubmitInteraction): P
   const entry = await ladderRepo.findEntry(userId, element);
   if (!entry) {
     await interaction.editReply({ content: "That entry isn't on the ladder anymore." });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   const result = await setManualRank(entry.sheetRow, desiredRank);
   if (!result) {
     await interaction.editReply({ content: "Something went wrong applying that rank." });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   await interaction.editReply({
-    content: `Set **${result.entry.characterName}** (${element}) to rank ${result.entry.rank}. ${result.changedCount} entries shifted.`,
+    content: `Set **${result.entry.characterName}** (${formatElement(element)}) to rank ${result.entry.rank}. ${result.changedCount} entries shifted.`,
   });
+  scheduleReplyCleanup(interaction);
 
   const embed = new EmbedBuilder()
-    .setDescription(`🛠️ <@${interaction.user.id}> manually set <@${userId}>'s **${element}** entry to rank **${result.entry.rank}**.`)
+    .setDescription(`🛠️ <@${interaction.user.id}> manually set <@${userId}>'s **${formatElement(element)}** entry to rank **${result.entry.rank}**.`)
     .setColor(0x992d22);
-  await notify.rankings(interaction.client, { embeds: [embed] });
+  await notify.challenges(interaction.client, { embeds: [embed] });
   await refreshTop10Panel(interaction.client).catch((err) => console.error("Failed to refresh top 10 panel:", err));
 }

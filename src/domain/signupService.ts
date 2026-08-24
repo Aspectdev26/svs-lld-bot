@@ -4,6 +4,7 @@ import * as rank1Repo from "../sheets/rank1Repo.js";
 import * as signupRequestsRepo from "../sheets/signupRequestsRepo.js";
 import * as bannedRepo from "../sheets/bannedRepo.js";
 import { nextRankForNewEntry } from "./rankingService.js";
+import { formatElement } from "../util/formatElement.js";
 import type { Build, Element, LadderRow, SignupRequestRow } from "../types.js";
 
 function genId(): string {
@@ -25,16 +26,16 @@ export async function createSignupRequest(
   if (ban) {
     return {
       ok: false,
-      reason: `You're banned from signing up${ban.element === "ALL" ? "" : ` with **${element}**`}${ban.reason ? ` (reason: ${ban.reason})` : ""}.`,
+      reason: `You're banned from signing up${ban.element === "ALL" ? "" : ` with **${formatElement(element)}**`}${ban.reason ? ` (reason: ${ban.reason})` : ""}.`,
     };
   }
   const existingEntry = await ladderRepo.findEntry(discordUserId, element);
   if (existingEntry) {
-    return { ok: false, reason: `You're already on the ladder with **${element}** (rank ${existingEntry.rank}).` };
+    return { ok: false, reason: `You're already on the ladder with **${formatElement(element)}** (rank ${existingEntry.rank}).` };
   }
   const pending = await signupRequestsRepo.getPendingRequestForUserElement(discordUserId, element);
   if (pending) {
-    return { ok: false, reason: `You already have a pending **${element}** signup request awaiting review.` };
+    return { ok: false, reason: `You already have a pending **${formatElement(element)}** signup request awaiting review.` };
   }
 
   // Character name must be unique per element+build, except a player may reclaim their own
@@ -43,14 +44,14 @@ export async function createSignupRequest(
   if (duplicateOnLadder && duplicateOnLadder.discordUserId !== discordUserId) {
     return {
       ok: false,
-      reason: `**${characterName}** is already taken for **${element}** (${build}) — pick a different name.`,
+      reason: `**${characterName}** is already taken for **${formatElement(element)}** (${build}) — pick a different name.`,
     };
   }
   const duplicatePending = await signupRequestsRepo.findPendingByCharacterNameElementBuild(characterName, element, build);
   if (duplicatePending && duplicatePending.discordUserId !== discordUserId) {
     return {
       ok: false,
-      reason: `**${characterName}** is already pending review for **${element}** (${build}) — pick a different name.`,
+      reason: `**${characterName}** is already pending review for **${formatElement(element)}** (${build}) — pick a different name.`,
     };
   }
 

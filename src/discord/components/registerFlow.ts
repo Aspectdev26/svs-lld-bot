@@ -21,6 +21,8 @@ import { createSignupRequest, approveSignup, denySignup } from "../../domain/sig
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation, deleteMessageByUrl } from "../notify.js";
 import { refreshTop10Panel } from "../top10Panel.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
+import { formatElement } from "../../util/formatElement.js";
 import type { SignupRequestRow } from "../../types.js";
 
 const ELEMENT_SELECT_ID = "reg_element_select";
@@ -47,7 +49,7 @@ export async function handleRegisterStartButton(interaction: ButtonInteraction):
   const select = new StringSelectMenuBuilder()
     .setCustomId(ELEMENT_SELECT_ID)
     .setPlaceholder("Choose your element")
-    .addOptions(ELEMENTS.map((e) => ({ label: e, value: e })));
+    .addOptions(ELEMENTS.map((e) => ({ label: formatElement(e), value: e })));
 
   await interaction.reply({
     content: "**Step 1/3 — Element:** which element is this character?",
@@ -62,9 +64,10 @@ export async function handleElementSelect(interaction: StringSelectMenuInteracti
   const ban = await bannedRepo.isBanned(interaction.user.id, element);
   if (ban) {
     await interaction.update({
-      content: `You're banned from signing up${ban.element === "ALL" ? "" : ` with **${element}**`}${ban.reason ? ` (reason: ${ban.reason})` : ""}.`,
+      content: `You're banned from signing up${ban.element === "ALL" ? "" : ` with **${formatElement(element)}**`}${ban.reason ? ` (reason: ${ban.reason})` : ""}.`,
       components: [],
     });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -74,7 +77,7 @@ export async function handleElementSelect(interaction: StringSelectMenuInteracti
     .addOptions(BUILDS.map((b) => ({ label: b, value: b })));
 
   await interaction.update({
-    content: `**Step 2/3 — Build:** element set to **${element}**. Which build?`,
+    content: `**Step 2/3 — Build:** element set to **${formatElement(element)}**. Which build?`,
     components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
   });
 }
@@ -107,7 +110,7 @@ export function buildSignupReviewMessage(request: SignupRequestRow): {
   const embed = new EmbedBuilder()
     .setTitle("New signup request")
     .setDescription(
-      `**Character:** ${request.characterName}\n**Element:** ${request.element}\n**Build:** ${request.build}\n` +
+      `**Character:** ${request.characterName}\n**Element:** ${formatElement(request.element)}\n**Build:** ${request.build}\n` +
         `**Requested by:** <@${request.discordUserId}>`,
     )
     .setColor(0x9b59b6);
@@ -126,6 +129,7 @@ export async function handleNameModal(interaction: ModalSubmitInteraction): Prom
 
   if (!characterName) {
     await interaction.reply({ content: "Character name can't be empty — please try again.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -141,12 +145,14 @@ export async function handleNameModal(interaction: ModalSubmitInteraction): Prom
   const result = await createSignupRequest(interaction.user.id, discordName, characterName, element, build);
   if (!result.ok) {
     await interaction.editReply({ content: result.reason });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   await interaction.editReply({
-    content: `Signup request submitted for **${characterName}** (${element}, ${build}) — a League Manager will review it shortly.`,
+    content: `Signup request submitted for **${characterName}** (${formatElement(element)}, ${build}) — a League Manager will review it shortly.`,
   });
+  scheduleReplyCleanup(interaction);
 
   const { request } = result;
   const leagueManagerRole = interaction.guild?.roles.cache.find((r) => r.name === config.leagueManagerRoleName);
@@ -168,12 +174,14 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can resolve signup requests.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   const request = await signupRequestsRepo.getRequestById(requestId);
   if (!request || request.status !== "Pending") {
     await interaction.reply({ content: "This signup request has already been resolved.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -211,7 +219,7 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
   const embed = new EmbedBuilder()
     .setTitle("🎉 New Challenger Has Entered The Ladder! 🎉")
     .setDescription(
-      `**${entry.characterName}** (${entry.element} • ${entry.build}) has joined at **Rank ${entry.rank}**!\n\n*"${randomSaying()}"*`,
+      `**${entry.characterName}** (${formatElement(entry.element)} • ${entry.build}) has joined at **Rank ${entry.rank}**!\n\n*"${randomSaying()}"*`,
     )
     .setColor(0xf1c40f);
 
@@ -223,7 +231,7 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
   try {
     const requester = await interaction.client.users.fetch(entry.discordUserId);
     await requester.send({
-      content: `🎉 You've been approved! **${entry.characterName}** (${entry.element}, ${entry.build}) is now on the ladder at rank ${entry.rank}.`,
+      content: `🎉 You've been approved! **${entry.characterName}** (${formatElement(entry.element)}, ${entry.build}) is now on the ladder at rank ${entry.rank}.`,
     });
   } catch {
     // DMs closed — the public #announcements post above already covers it.
@@ -239,6 +247,7 @@ export async function handleRegisterDenyModal(interaction: ModalSubmitInteractio
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can resolve signup requests.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -247,6 +256,7 @@ export async function handleRegisterDenyModal(interaction: ModalSubmitInteractio
   const request = await signupRequestsRepo.getRequestById(requestId);
   if (!request || request.status !== "Pending") {
     await interaction.editReply({ content: "This signup request has already been resolved." });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -254,13 +264,14 @@ export async function handleRegisterDenyModal(interaction: ModalSubmitInteractio
   await denySignup(request, interaction.user.id, reason);
 
   await interaction.editReply({ content: "Signup request denied and the requester has been notified." });
+  scheduleReplyCleanup(interaction);
 
   await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
   await postAutoDeletingConfirmation(interaction.client, `❌ Denied by <@${interaction.user.id}>. Reason: ${reason}`);
 
   const embed = new EmbedBuilder()
     .setTitle("Your signup request was denied")
-    .setDescription(`**Character:** ${request.characterName} (${request.element}, ${request.build})\n**Reason:** ${reason}`)
+    .setDescription(`**Character:** ${request.characterName} (${formatElement(request.element)}, ${request.build})\n**Reason:** ${reason}`)
     .setColor(0xe74c3c);
 
   try {

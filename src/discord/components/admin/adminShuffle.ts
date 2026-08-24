@@ -5,6 +5,7 @@ import { closeMatchChannel } from "../../matchChannels.js";
 import { notify } from "../../notify.js";
 import { refreshTop10Panel } from "../../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../../activeChallengesPanel.js";
+import { scheduleReplyCleanup, scheduleMessageCleanup } from "../../ephemeralCleanup.js";
 
 const CONFIRM_ID = "admin_shuffle_confirm";
 const CANCEL_ID = "admin_shuffle_cancel";
@@ -12,6 +13,7 @@ const CANCEL_ID = "admin_shuffle_cancel";
 export async function handleShuffleStart(interaction: ButtonInteraction): Promise<void> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -30,11 +32,13 @@ export async function handleShuffleStart(interaction: ButtonInteraction): Promis
 export async function handleShuffleResolve(interaction: ButtonInteraction): Promise<void> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   if (interaction.customId === CANCEL_ID) {
     await interaction.update({ content: "Shuffle cancelled — no changes made.", components: [] });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -45,10 +49,12 @@ export async function handleShuffleResolve(interaction: ButtonInteraction): Prom
     await closeMatchChannel(interaction.client, match, "Ladder reset by admin");
   }
 
-  await interaction.followUp({
+  const followUp = await interaction.followUp({
     content: `Done. ${changedCount} entries moved, ${cancelledMatches.length} active match(es) cancelled.`,
     ephemeral: true,
   });
+  scheduleReplyCleanup(interaction);
+  scheduleMessageCleanup(followUp);
 
   const embed = new EmbedBuilder()
     .setTitle("🎲 Ladder Reset")
@@ -57,12 +63,7 @@ export async function handleShuffleResolve(interaction: ButtonInteraction): Prom
         (cancelledMatches.length > 0 ? ` and ${cancelledMatches.length} active match(es) were cancelled.` : "."),
     )
     .setColor(0x992d22);
-  await notify.rankings(interaction.client, { embeds: [embed] });
-  if (cancelledMatches.length > 0) {
-    await notify.challenges(interaction.client, {
-      content: "Several active matches were cancelled due to a ladder reset.",
-    });
-  }
+  await notify.challenges(interaction.client, { embeds: [embed] });
   await refreshTop10Panel(interaction.client).catch((err) => console.error("Failed to refresh top 10 panel:", err));
   await refreshActiveChallengesPanel(interaction.client).catch((err) =>
     console.error("Failed to refresh active challenges panel:", err),

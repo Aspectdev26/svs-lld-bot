@@ -7,6 +7,7 @@ import { notify } from "./notify.js";
 import { closeMatchChannel } from "./matchChannels.js";
 import { refreshTop10Panel } from "./top10Panel.js";
 import { refreshActiveChallengesPanel } from "./activeChallengesPanel.js";
+import { formatElement } from "../util/formatElement.js";
 import type { MatchRow } from "../types.js";
 
 export const WINNER_SELECT_PREFIX = "reportwin_winner_select";
@@ -46,11 +47,11 @@ export async function buildWinnerPrompt(matchId: string, requesterUserId: string
     .setPlaceholder("Who won?")
     .addOptions(
       {
-        label: `${challengerName} (${match.challengerElement})`,
+        label: `${challengerName} (${formatElement(match.challengerElement)})`,
         value: match.challengerUserId,
       },
       {
-        label: `${defenderName} (${match.defenderElement})`,
+        label: `${defenderName} (${formatElement(match.defenderElement)})`,
         value: match.defenderUserId,
       },
     );
@@ -70,7 +71,7 @@ export async function finalizeReportWin(
 
   const { match, winnerMovedUp, rank1Update } = result;
   let description =
-    `🏆 <@${match.winnerUserId}> won the match (\`${match.matchId}\`) between <@${match.challengerUserId}> (${match.challengerElement}) and <@${match.defenderUserId}> (${match.defenderElement}).` +
+    `🏆 <@${match.winnerUserId}> won the match (\`${match.matchId}\`) between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and <@${match.defenderUserId}> (${formatElement(match.defenderElement)}).` +
     (winnerMovedUp ? "\nThe challenger has taken the defender's rank." : "\nNo rank change — the defender held their spot.");
 
   if (rank1Update.changed) {

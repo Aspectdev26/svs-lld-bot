@@ -1,3 +1,4 @@
+import { formatElement } from "../util/formatElement.js";
 import type { LadderRow } from "../types.js";
 
 export interface ChallengeRuleConfig {
@@ -64,10 +65,10 @@ export function checkChallenge(params: ChallengeCheckParams): string | null {
     return `${defender.characterName} is currently on Vacation and can't be challenged.`;
   }
   if (challengerEntryHasPendingMatch) {
-    return `your ${challenger.element} entry already has a match in progress — resolve it before challenging again with that element.`;
+    return `your ${formatElement(challenger.element)} entry already has a match in progress — resolve it before challenging again with that element.`;
   }
   if (defenderEntryHasPendingMatch) {
-    return `${defender.characterName}'s ${defender.element} entry already has a match in progress and can't be challenged right now.`;
+    return `${defender.characterName}'s ${formatElement(defender.element)} entry already has a match in progress and can't be challenged right now.`;
   }
   if (defender.rank >= challenger.rank) {
     return "you can only challenge players ranked above you.";

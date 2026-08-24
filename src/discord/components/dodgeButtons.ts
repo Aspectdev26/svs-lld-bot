@@ -18,6 +18,8 @@ import { notify, postAutoDeletingConfirmation, deleteMessageByUrl } from "../not
 import { closeMatchChannel } from "../matchChannels.js";
 import { refreshTop10Panel } from "../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
+import { formatElement } from "../../util/formatElement.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 
 export const DENY_MODAL_PREFIX = "dodge_deny_modal";
 export const DENY_REASON_INPUT_ID = "deny_reason";
@@ -27,12 +29,14 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can resolve dodge requests.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   const dodge = await dodgesRepo.getDodgeById(dodgeId);
   if (!dodge || dodge.status !== "Pending") {
     await interaction.reply({ content: "This dodge request has already been resolved.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -58,6 +62,7 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
   const match = await matchesRepo.getMatchById(dodge.matchId);
   if (!match || match.status !== "Pending") {
     await interaction.reply({ content: "The underlying match is no longer pending — can't approve.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -75,7 +80,7 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
     `✅ Dodge approved by <@${interaction.user.id}>. <@${match.challengerUserId}> has taken the rank.`,
   );
 
-  let description = `🏳️ <@${match.defenderUserId}> did not respond in time — <@${match.challengerUserId}> (${match.challengerElement}) has been awarded the win and taken their rank (match \`${match.matchId}\`).`;
+  let description = `🏳️ <@${match.defenderUserId}> did not respond in time — <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) has been awarded the win and taken their rank (match \`${match.matchId}\`).`;
   if (rank1Update.changed && rank1Update.kind === "newChampion") {
     description += `\n👑 **${rank1Update.holderName}** is the new Rank 1!`;
   }

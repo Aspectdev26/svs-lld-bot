@@ -5,6 +5,8 @@ import { checkChallenge, getEligibleTargets } from "../domain/challengeRules.js"
 import { createMatchChannel } from "./matchChannels.js";
 import { notify } from "./notify.js";
 import { refreshActiveChallengesPanel } from "./activeChallengesPanel.js";
+import { scheduleReplyCleanup, scheduleMessageCleanup } from "./ephemeralCleanup.js";
+import { formatElement } from "../util/formatElement.js";
 import type { LadderRow } from "../types.js";
 
 export const TARGET_SELECT_PREFIX = "chal_target_select";
@@ -19,7 +21,7 @@ export function buildTargetSelectRow(ladder: LadderRow[], challengerEntry: Ladde
   if (eligible.length === 0) {
     return {
       ok: false,
-      reason: `There's no one you can currently challenge with your **${challengerEntry.element}** entry (rank ${challengerEntry.rank}).`,
+      reason: `There's no one you can currently challenge with your **${formatElement(challengerEntry.element)}** entry (rank ${challengerEntry.rank}).`,
     };
   }
 
@@ -28,7 +30,7 @@ export function buildTargetSelectRow(ladder: LadderRow[], challengerEntry: Ladde
     .setPlaceholder("Choose your target")
     .addOptions(
       eligible.map((e) => ({
-        label: `Rank ${e.row.rank} — ${e.row.characterName} (${e.row.element})`,
+        label: `Rank ${e.row.rank} — ${e.row.characterName} (${formatElement(e.row.element)})`,
         value: String(e.row.sheetRow),
       })),
     );
@@ -72,7 +74,9 @@ export async function attemptChallenge(
   });
 
   if (rejection) {
-    await respond({ content: `You can't challenge that player because ${rejection}`, ephemeral: true });
+    const sent = await respond({ content: `You can't challenge that player because ${rejection}`, ephemeral: true });
+    scheduleReplyCleanup(interaction);
+    if (alreadyAcked) scheduleMessageCleanup(sent);
     return;
   }
 
@@ -89,15 +93,17 @@ export async function attemptChallenge(
     }
   }
 
-  await respond({
-    content: `Challenge issued against **${defenderEntry.characterName}** (${defenderEntry.element})! Match ID \`${match.matchId}\`.${channelMention}`,
+  const sent = await respond({
+    content: `Challenge issued against **${defenderEntry.characterName}** (${formatElement(defenderEntry.element)})! Match ID \`${match.matchId}\`.${channelMention}`,
     ephemeral: true,
   });
+  scheduleReplyCleanup(interaction);
+  if (alreadyAcked) scheduleMessageCleanup(sent);
 
   const embed = new EmbedBuilder()
     .setTitle("New challenge")
     .setDescription(
-      `⚔️ <@${challengerEntry.discordUserId}> (**${challengerEntry.element}**, rank ${challengerEntry.rank}) has challenged <@${defenderEntry.discordUserId}> (**${defenderEntry.element}**, rank ${defenderEntry.rank})!\n\n` +
+      `⚔️ <@${challengerEntry.discordUserId}> (**${formatElement(challengerEntry.element)}**, rank ${challengerEntry.rank}) has challenged <@${defenderEntry.discordUserId}> (**${formatElement(defenderEntry.element)}**, rank ${defenderEntry.rank})!\n\n` +
         `Match ID: \`${match.matchId}\`\nExpires: <t:${expiresUnix}:F> (<t:${expiresUnix}:R>)${channelMention}`,
     )
     .setColor(0xe67e22);

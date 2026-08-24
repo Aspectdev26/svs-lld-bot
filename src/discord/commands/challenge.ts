@@ -3,6 +3,8 @@ import { config } from "../../config.js";
 import * as ladderRepo from "../../sheets/ladderRepo.js";
 import { getEligibleTargets } from "../../domain/challengeRules.js";
 import { attemptChallenge } from "../challengeFlow.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
+import { formatElement } from "../../util/formatElement.js";
 import type { Command } from "../commandTypes.js";
 import type { Element } from "../../types.js";
 
@@ -30,7 +32,7 @@ export const challengeCommand: Command = {
 
     if (focused.name === "my-element") {
       const rows = await ladderRepo.getPlayerRows(interaction.user.id);
-      const choices = rows.map((r) => ({ name: `${r.element} (rank ${r.rank})`, value: r.element }));
+      const choices = rows.map((r) => ({ name: `${formatElement(r.element)} (rank ${r.rank})`, value: r.element }));
       await interaction.respond(choices.slice(0, 25));
       return;
     }
@@ -52,7 +54,7 @@ export const challengeCommand: Command = {
       const choices = eligible
         .filter((e) => e.row.characterName.toLowerCase().includes(typed))
         .map((e) => ({
-          name: `Rank ${e.row.rank} — ${e.row.characterName} (${e.row.element})`,
+          name: `Rank ${e.row.rank} — ${e.row.characterName} (${formatElement(e.row.element)})`,
           value: String(e.row.sheetRow),
         }));
       await interaction.respond(choices.slice(0, 25));
@@ -70,8 +72,9 @@ export const challengeCommand: Command = {
     const challengerEntry = await ladderRepo.findEntry(interaction.user.id, myElement);
     if (!challengerEntry) {
       await interaction.editReply({
-        content: `You don't have a **${myElement}** entry on the ladder — sign up in #register first.`,
+        content: `You don't have a **${formatElement(myElement)}** entry on the ladder — sign up in #register first.`,
       });
+      scheduleReplyCleanup(interaction);
       return;
     }
 
@@ -79,6 +82,7 @@ export const challengeCommand: Command = {
     const defenderEntry = ladder.find((r) => r.sheetRow === targetSheetRow);
     if (!defenderEntry) {
       await interaction.editReply({ content: "That target isn't valid anymore — please pick again from the list." });
+      scheduleReplyCleanup(interaction);
       return;
     }
 

@@ -4,6 +4,7 @@ import * as matchesRepo from "../sheets/matchesRepo.js";
 import { expireMatch } from "../domain/matchService.js";
 import { notify } from "../discord/notify.js";
 import { refreshActiveChallengesPanel } from "../discord/activeChallengesPanel.js";
+import { formatElement } from "../util/formatElement.js";
 
 let running = false;
 
@@ -23,8 +24,8 @@ async function checkMatches(client: Client): Promise<void> {
         const embed = new EmbedBuilder()
           .setTitle("Match expired")
           .setDescription(
-            `⌛ The match (\`${match.matchId}\`) between <@${match.challengerUserId}> (${match.challengerElement}) and ` +
-              `<@${match.defenderUserId}> (${match.defenderElement}) expired with no result reported. No rank change — both players are free to challenge/be challenged again.`,
+            `⌛ The match (\`${match.matchId}\`) between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and ` +
+              `<@${match.defenderUserId}> (${formatElement(match.defenderElement)}) expired with no result reported. No rank change — both players are free to challenge/be challenged again.`,
           )
           .setColor(0x7f8c8d);
         await notify.challenges(client, { embeds: [embed] });
@@ -38,8 +39,8 @@ async function checkMatches(client: Client): Promise<void> {
         const embed = new EmbedBuilder()
           .setTitle("Match expiring soon")
           .setDescription(
-            `⚠️ Match \`${match.matchId}\` between <@${match.challengerUserId}> (${match.challengerElement}) and ` +
-              `<@${match.defenderUserId}> (${match.defenderElement}) expires <t:${Math.floor(expiresAtMs / 1000)}:R>. ` +
+            `⚠️ Match \`${match.matchId}\` between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and ` +
+              `<@${match.defenderUserId}> (${formatElement(match.defenderElement)}) expires <t:${Math.floor(expiresAtMs / 1000)}:R>. ` +
               `Play your match and use /report-win, or request a dodge if your opponent hasn't responded.`,
           )
           .setColor(0xf39c12);

@@ -1,5 +1,6 @@
 import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
 import * as ladderRepo from "../../sheets/ladderRepo.js";
+import { formatElement } from "../../util/formatElement.js";
 import type { Command } from "../commandTypes.js";
 
 const PAGE_SIZE = 20;
@@ -28,7 +29,7 @@ export const ladderCommand: Command = {
 
     const statusTag = { Available: "", Vacation: " 🌴", Challenge: " ⚔️" } as const;
     const lines = slice.map(
-      (r) => `**${r.rank}.** ${r.characterName} — ${r.element} (${r.build})${statusTag[r.status]}`,
+      (r) => `**${r.rank}.** ${r.characterName} — ${formatElement(r.element)} (${r.build})${statusTag[r.status]}`,
     );
 
     const totalPages = Math.ceil(ladder.length / PAGE_SIZE);

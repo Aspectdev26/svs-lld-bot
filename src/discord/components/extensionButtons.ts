@@ -4,18 +4,21 @@ import * as matchesRepo from "../../sheets/matchesRepo.js";
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation } from "../notify.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 
 export async function handleExtensionButton(interaction: ButtonInteraction): Promise<void> {
   const [action, matchId] = interaction.customId.split(":");
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can resolve extension requests.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   const match = await matchesRepo.getMatchById(matchId);
   if (!match || match.status !== "Pending" || !match.extensionPending) {
     await interaction.reply({ content: "This extension request is no longer pending.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 

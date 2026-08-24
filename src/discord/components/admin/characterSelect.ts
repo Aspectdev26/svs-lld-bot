@@ -1,4 +1,5 @@
 import { ActionRowBuilder, StringSelectMenuBuilder } from "discord.js";
+import { formatElement } from "../../../util/formatElement.js";
 import type { LadderRow } from "../../../types.js";
 
 /** Discord string selects cap out at 25 options — the league is well under that today. */
@@ -15,7 +16,7 @@ export function buildLadderCharacterSelectRow(
     .setPlaceholder(placeholder)
     .addOptions(
       ladder.slice(0, LADDER_SELECT_MAX_OPTIONS).map((r) => ({
-        label: `${r.characterName} — ${r.element}, ${r.build}`.slice(0, 100),
+        label: `${r.characterName} — ${formatElement(r.element)}, ${r.build}`.slice(0, 100),
         description: `${r.discordName} — Rank ${r.rank}${r.status !== "Available" ? ` — ${r.status}` : ""}`.slice(0, 100),
         value: String(r.sheetRow),
       })),

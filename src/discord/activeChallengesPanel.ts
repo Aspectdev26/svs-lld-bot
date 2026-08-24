@@ -2,6 +2,7 @@ import { EmbedBuilder, type Client, type TextChannel } from "discord.js";
 import { config } from "../config.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
 import * as ladderRepo from "../sheets/ladderRepo.js";
+import { formatElement } from "../util/formatElement.js";
 import type { Element } from "../types.js";
 
 const PANEL_TITLE = "⚔️ Active Challenges";
@@ -33,8 +34,8 @@ export async function refreshActiveChallengesPanel(client: Client): Promise<void
           .map((m) => {
             const expiresUnix = Math.floor(Date.parse(m.expiresAt) / 1000);
             return (
-              `**${nameFor(m.challengerUserId, m.challengerElement)}** (${m.challengerElement}) vs ` +
-              `**${nameFor(m.defenderUserId, m.defenderElement)}** (${m.defenderElement}) — ` +
+              `**${nameFor(m.challengerUserId, m.challengerElement)}** (${formatElement(m.challengerElement)}) vs ` +
+              `**${nameFor(m.defenderUserId, m.defenderElement)}** (${formatElement(m.defenderElement)}) — ` +
               `expires <t:${expiresUnix}:R> — \`${m.matchId}\``
             );
           })

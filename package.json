@@ -1,0 +1,31 @@
+{
+  "name": "svs-lld-bot",
+  "version": "1.0.0",
+  "description": "Discord bot managing the SVS league ladder (challenges, wins, dodges, vacations) backed by a live Google Sheet.",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "register-commands": "tsx src/discord/registerCommands.ts",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.53",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "google-auth-library": "^9.14.1",
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.2"
+  }
+}

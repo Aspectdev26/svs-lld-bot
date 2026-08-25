@@ -1,14 +1,8 @@
-import {
-  addSheetTab,
-  appendSheetRow,
-  clearSheetRange,
-  getSheetMetaByName,
-  readSheetRange,
-  updateSheetRow,
-  writeSheetRows,
-} from "./sheetsClient.js";
+import { addSheetTab, appendSheetRow, getSheetMetaByName, readSheetRange, updateSheetRow, writeSheetRows } from "./sheetsClient.js";
+import * as settingsRepo from "./settingsRepo.js";
 import type { Build, Element, LadderRow, SeasonStatsRow } from "../types.js";
 
+/** Legacy/fallback tab name, used until the first reset under the named-season-tab scheme. */
 export const SEASON_STATS_SHEET = "SeasonStats";
 export const SEASON_STATS_HEADERS = ["DiscordUserID", "DiscordName", "CharacterName", "Element", "Build", "Defends", "Wins", "Losses"];
 
@@ -31,24 +25,35 @@ function rowFromValues(sheetRow: number, values: string[]): SeasonStatsRow {
   };
 }
 
+/**
+ * The tab the current season's stats live in — named after the season itself once a reset has
+ * named one, falling back to the generic `SeasonStats` tab until then.
+ */
+async function currentSheetName(): Promise<string> {
+  const { currentSeasonName } = await settingsRepo.getSettings();
+  return currentSeasonName || SEASON_STATS_SHEET;
+}
+
 /** Every character with recorded activity so far this season. */
 export async function getAllRows(): Promise<SeasonStatsRow[]> {
-  const values = await readSheetRange(`${SEASON_STATS_SHEET}!A2:H`);
+  const sheetName = await currentSheetName();
+  const values = await readSheetRange(`${sheetName}!A2:H`);
   return values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is SeasonStatsRow => r !== null);
 }
 
 async function upsertStat(entry: LadderRow, field: "defends" | "wins" | "losses"): Promise<number> {
+  const sheetName = await currentSheetName();
   const rows = await getAllRows();
   const existing = rows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
   const newValue = (existing?.[field] ?? 0) + 1;
 
   if (existing) {
-    await updateSheetRow(SEASON_STATS_SHEET, existing.sheetRow, toValues({ ...existing, [field]: newValue }));
+    await updateSheetRow(sheetName, existing.sheetRow, toValues({ ...existing, [field]: newValue }));
   } else {
     await appendSheetRow(
-      SEASON_STATS_SHEET,
+      sheetName,
       toValues({
         discordUserId: entry.discordUserId,
         discordName: entry.discordName,
@@ -79,18 +84,46 @@ export async function recordLoss(entry: LadderRow): Promise<number> {
   return upsertStat(entry, "losses");
 }
 
-/** Wipes every data row (used right after archiving the season to a `Season N` tab). Headers are left intact. */
-export async function clearAll(): Promise<void> {
-  await clearSheetRange(SEASON_STATS_SHEET, "A2:H100000");
-}
-
 /** True if a tab with this exact (already-sanitized) name already exists — used to reject a reused season name. */
-export async function archiveTabExists(seasonName: string): Promise<boolean> {
-  return (await getSheetMetaByName(seasonName)) !== undefined;
+export async function tabExists(name: string): Promise<boolean> {
+  return (await getSheetMetaByName(name)) !== undefined;
 }
 
-/** Snapshots `rows` into a brand-new tab titled `seasonName` — a permanent, never-touched-again record. */
-export async function archiveSeason(seasonName: string, rows: Omit<SeasonStatsRow, "sheetRow">[]): Promise<void> {
+/**
+ * Appends a 0/0/0 row for every ladder entry with no recorded activity into the current season's
+ * tab, so historically-active-but-quiet characters still show up once that tab stops being
+ * written to and becomes this season's permanent record.
+ */
+export async function backfillInactiveEntries(ladder: LadderRow[]): Promise<void> {
+  const sheetName = await currentSheetName();
+  const rows = await getAllRows();
+  const statKeys = new Set(rows.map((r) => `${r.discordUserId}:${r.element}`));
+  const inactive = ladder.filter((entry) => !statKeys.has(`${entry.discordUserId}:${entry.element}`));
+
+  for (const entry of inactive) {
+    await appendSheetRow(
+      sheetName,
+      toValues({
+        discordUserId: entry.discordUserId,
+        discordName: entry.discordName,
+        characterName: entry.characterName,
+        element: entry.element,
+        build: entry.build,
+        defends: 0,
+        wins: 0,
+        losses: 0,
+      }),
+    );
+  }
+}
+
+/**
+ * Creates a brand-new, empty tab titled `seasonName` and points future season-stat writes at it.
+ * The previous season's tab is left exactly as it was — no copy step — so it stands as that
+ * season's permanent record from the moment this one begins.
+ */
+export async function startNewSeason(seasonName: string): Promise<void> {
   await addSheetTab(seasonName);
-  await writeSheetRows(seasonName, 1, [SEASON_STATS_HEADERS, ...rows.map(toValues)]);
+  await writeSheetRows(seasonName, 1, [SEASON_STATS_HEADERS]);
+  await settingsRepo.setCurrentSeasonName(seasonName);
 }

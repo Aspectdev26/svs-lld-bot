@@ -7,6 +7,7 @@ import { createMatchChannel } from "./matchChannels.js";
 import { notify } from "./notify.js";
 import { refreshActiveChallengesPanel } from "./activeChallengesPanel.js";
 import { scheduleReplyCleanup, scheduleMessageCleanup } from "./ephemeralCleanup.js";
+import { maybeTrollChallenge } from "./troll.js";
 import { formatElement } from "../util/formatElement.js";
 import type { LadderRow } from "../types.js";
 
@@ -124,5 +125,9 @@ export async function attemptChallenge(
   });
   await refreshActiveChallengesPanel(interaction.client).catch((err) =>
     console.error("Failed to refresh active challenges panel:", err),
+  );
+
+  await maybeTrollChallenge(interaction.client, challengerEntry.discordUserId).catch((err) =>
+    console.error("Troll check failed:", err),
   );
 }

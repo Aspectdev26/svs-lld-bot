@@ -10,7 +10,7 @@ import { sanitizeSheetTitle } from "../util/sanitizeSheetTitle.js";
 import type { LadderRow, MatchRow } from "../types.js";
 
 export type ResetLadderEndSeasonResult =
-  | { ok: true; changedCount: number; cancelledMatches: MatchRow[]; seasonName: string }
+  | { ok: true; changedCount: number; cancelledMatches: MatchRow[]; newSeasonName: string }
   | { ok: false; reason: string };
 
 const SHUFFLE_PASSES = 3;
@@ -34,43 +34,17 @@ function shuffleRepeatedly(ladder: LadderRow[]): RankChange[] {
 }
 
 /**
- * Snapshots the current season's SeasonStats (plus every ladder entry with no recorded activity,
- * so historically-active-but-quiet characters still show up at 0/0/0) into a tab titled
- * `seasonName`, then wipes SeasonStats for the next season.
+ * Admin "Reset Ladder (End Season)": backfills the current season's tab with any ladder entries
+ * that saw no activity (so it stands as a complete record once writes move on), then creates a
+ * brand-new tab titled `newSeasonName` for the upcoming season and points future season-stat
+ * writes at it — the just-ended season's tab is left exactly as-is, no copy step needed. Also
+ * cancels active matches and shuffles rank order three times. Rejects a name that collides with
+ * any existing tab without making any changes.
  */
-async function archiveAndResetSeason(ladder: LadderRow[], seasonName: string): Promise<void> {
-  const seasonStats = await seasonStatsRepo.getAllRows();
-
-  const statKeys = new Set(seasonStats.map((r) => `${r.discordUserId}:${r.element}`));
-  const inactiveEntries = ladder.filter((entry) => !statKeys.has(`${entry.discordUserId}:${entry.element}`));
-
-  const archiveRows = [
-    ...seasonStats.map(({ sheetRow, ...row }) => row),
-    ...inactiveEntries.map((entry) => ({
-      discordUserId: entry.discordUserId,
-      discordName: entry.discordName,
-      characterName: entry.characterName,
-      element: entry.element,
-      build: entry.build,
-      defends: 0,
-      wins: 0,
-      losses: 0,
-    })),
-  ];
-
-  await seasonStatsRepo.archiveSeason(seasonName, archiveRows);
-  await seasonStatsRepo.clearAll();
-}
-
-/**
- * Admin "Reset Ladder (End Season)": archives + resets season stats under an admin-chosen name,
- * cancels active matches, then shuffles rank order three times. Rejects a name that collides with
- * an already-archived season tab without making any changes.
- */
-export async function resetLadderEndSeason(seasonNameInput: string): Promise<ResetLadderEndSeasonResult> {
-  const seasonName = sanitizeSheetTitle(seasonNameInput);
-  if (await seasonStatsRepo.archiveTabExists(seasonName)) {
-    return { ok: false, reason: `A season named "${seasonName}" has already been archived — pick a different name.` };
+export async function resetLadderEndSeason(newSeasonNameInput: string): Promise<ResetLadderEndSeasonResult> {
+  const seasonName = sanitizeSheetTitle(newSeasonNameInput);
+  if (await seasonStatsRepo.tabExists(seasonName)) {
+    return { ok: false, reason: `A tab named "${seasonName}" already exists — pick a different name.` };
   }
 
   const pending = await matchesRepo.getPendingMatches();
@@ -79,7 +53,8 @@ export async function resetLadderEndSeason(seasonNameInput: string): Promise<Res
   }
 
   const ladder = await ladderRepo.getLadder();
-  await archiveAndResetSeason(ladder, seasonName);
+  await seasonStatsRepo.backfillInactiveEntries(ladder);
+  await seasonStatsRepo.startNewSeason(seasonName);
 
   const changes = shuffleRepeatedly(ladder);
   for (const change of changes) {
@@ -93,7 +68,7 @@ export async function resetLadderEndSeason(seasonNameInput: string): Promise<Res
   });
   await syncToCurrentHolder(updatedLadder);
 
-  return { ok: true, changedCount: changes.length, cancelledMatches: pending, seasonName };
+  return { ok: true, changedCount: changes.length, cancelledMatches: pending, newSeasonName: seasonName };
 }
 
 export interface ShuffleLadderRanksResult {

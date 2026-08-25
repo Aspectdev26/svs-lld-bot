@@ -65,11 +65,14 @@ requests with screenshot evidence.
   Discord can't hide a shared message's buttons per-viewer, so an unregistered user who clicks **Challenge** gets
   an immediate "you're not registered" reply rather than the button silently doing nothing or being invisible to
   them — that's the practical equivalent of "not accessible" the platform allows.
-- **Rank 1 defends**: the `All Time Stats` tab is a permanent, append-only record of every player (per element)
-  who has ever held rank 1, with their all-time count of successful title defenses — rows are never deleted or
-  overwritten when someone else takes the #1 spot, so it doubles as a hall-of-fame list. The defend count
-  increments when the rank-1 holder wins a challenge against them, and is preserved (not reset) if that player
-  later reclaims rank 1 after losing it. Announced in the results channel alongside the match result.
+- **All-time stats**: the `All Time Stats` tab is a permanent, append-only record covering every ladder
+  participant, not just rank-1 holders — a row is created (at 0/0/0) for a character the first time they win or
+  lose *any* match, at any rank, and their all-time `Wins`/`Losses` totals climb from there for as long as they're
+  active. Rows are never deleted or reset, even after a "Reset Ladder (End Season)" (that only wipes the
+  season-specific stats tab). `Defends` is the one column scoped to rank 1 specifically: it counts consecutive
+  successful title defenses, increments when the rank-1 holder wins a challenge against them, is preserved (not
+  reset) if that player later reclaims rank 1 after losing it, and the tab doubles as a hall-of-fame list of
+  everyone who's ever held the top spot. Announced in the results channel alongside the match result.
 - **One match per element**: a player can have up to 3 matches running at once (one per element), but a given
   element-entry can only be in one match at a time.
 - **Match channels**: issuing a challenge (`/challenge`) auto-creates a private text channel under the
@@ -100,8 +103,12 @@ requests with screenshot evidence.
 - **League Manager dashboard**: a pinned message in `#league-managers` with ten buttons, all gated to the
   `League Manager` role (the panel refreshes itself in place on every bot restart, so adding buttons in a future
   update doesn't require deleting the old pinned post by hand):
-  - **Reset Ladder (Shuffle)** — cancels every active match and randomizes rank order among all current entries.
-    Requires a confirmation click since it's irreversible.
+  - **Reset Ladder (End Season)** — cancels every active match, randomizes rank order among all current entries, and
+    asks for a name for the new season that's starting. Season stats (defends/wins/losses) live in a tab named
+    after the season — this creates a fresh, empty one under the given name and points future stat-tracking at it;
+    the season that just ended simply keeps the tab it's been using the whole time, now frozen as its permanent
+    record, with no separate archive/copy step. All-time stats (`All Time Stats` tab) are unaffected. Requires a
+    confirmation click since it's irreversible.
   - **Remove Player** — pick one character directly from a dropdown of every ladder entry (by character name, not
     Discord name); removes just that entry and cancels any match it was in, then closes the gap by renumbering
     everyone below it. Always targets exactly one character — to clear out all of a player's entries, remove each
@@ -268,8 +275,10 @@ league. To speed up expiry/warning testing, temporarily lower `MATCH_LIFESPAN_MS
       they show up in the `BannedUsers` tab, and both the `#register` element-select step and a direct sign-up
       attempt reject them with the ban reason.
     - **Unban** them — confirm they can sign up again afterward.
-    - **Reset Ladder (Shuffle)** last (it cancels every active match) — confirm the confirmation prompt works, all
-      active matches get cancelled with their channels deleted, and every rank is randomized afterward.
+    - **Reset Ladder (End Season)** last (it cancels every active match) — confirm the confirmation prompt works,
+      the season-name modal opens, all active matches get cancelled with their channels deleted, every rank is
+      randomized afterward, and a new tab titled with the name you gave appears with just the header row while the
+      previous season's tab is left untouched.
 12. Top 10 panel in `#rankings` — confirm it's posted and pinned on first startup with an image and a working link
     to the Sheet. Do anything that changes a top-10 rank (report a win, approve a dodge, Set Rank, Shuffle) and
     confirm the *same* pinned message updates in place (no duplicate posts, no re-pinning needed).

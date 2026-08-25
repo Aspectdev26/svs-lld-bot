@@ -24,6 +24,9 @@ export const notify = {
   rankings: (client: Client, payload: string | MessagePayload | MessageCreateOptions) =>
     sendTo(client, config.channels.rankings, payload),
   challenges: sendToChallenges,
+  /** The "Issue a Challenge" channel itself — not to be confused with `challenges` above, which targets the results channel. */
+  issueChallenge: (client: Client, payload: string | MessagePayload | MessageCreateOptions) =>
+    sendTo(client, config.channels.challenges, payload),
   leagueManagers: (client: Client, payload: string | MessagePayload | MessageCreateOptions) =>
     sendTo(client, config.channels.leagueManagers, payload),
   register: (client: Client, payload: string | MessagePayload | MessageCreateOptions) =>

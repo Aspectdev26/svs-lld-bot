@@ -30,6 +30,7 @@ import {
   handleChallengeTargetSelect,
 } from "../components/challengeFlowButtons.js";
 import { ADMIN_BUTTON_IDS } from "../adminPanel.js";
+import { maybeTrollAdminAction } from "../troll.js";
 import { handleShuffleStart, handleShuffleResolve, handleShuffleNameModal, SEASON_NAME_MODAL_ID } from "../components/admin/adminShuffle.js";
 import {
   handleRemoveStart,
@@ -82,6 +83,7 @@ const REG_NAME_MODAL_PREFIX = "reg_name_modal:";
 const CHAL_ELEMENT_SELECT_ID = "chal_element_select";
 const CHAL_TARGET_SELECT_PREFIX = `${TARGET_SELECT_PREFIX}:`;
 
+const ADMIN_BUTTON_ID_VALUES: string[] = Object.values(ADMIN_BUTTON_IDS);
 const ADMIN_SHUFFLE_RESOLVE_IDS = ["admin_shuffle_confirm", "admin_shuffle_cancel"];
 const ADMIN_REMOVE_RESOLVE_PREFIXES = ["admin_remove_confirm:", "admin_remove_cancel"];
 const ADMIN_CANCEL_RESOLVE_PREFIXES = ["admin_cancel_confirm:", "admin_cancel_cancel"];
@@ -194,6 +196,10 @@ export function registerInteractionEvent(client: Client): void {
           await handleMatchChannelButton(interaction);
         } else if (EXTENSION_BUTTON_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
           await handleExtensionButton(interaction);
+        }
+
+        if (ADMIN_BUTTON_ID_VALUES.includes(interaction.customId)) {
+          await maybeTrollAdminAction(interaction).catch((err) => console.error("Troll check failed:", err));
         }
         return;
       }

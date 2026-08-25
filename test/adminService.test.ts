@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { LadderRow, MatchRow, SeasonStatsRow } from "../src/types.js";
+import type { LadderRow, MatchRow } from "../src/types.js";
 
 vi.mock("../src/sheets/ladderRepo.js", () => ({
   getPlayerRows: vi.fn(),
@@ -25,10 +25,9 @@ vi.mock("../src/sheets/bannedRepo.js", async () => {
   return { ...actual, addBan: vi.fn(), clearBan: vi.fn(), getAllBans: vi.fn() };
 });
 vi.mock("../src/sheets/seasonStatsRepo.js", () => ({
-  getAllRows: vi.fn(),
-  clearAll: vi.fn(),
-  archiveSeason: vi.fn(),
-  archiveTabExists: vi.fn(),
+  tabExists: vi.fn(),
+  backfillInactiveEntries: vi.fn(),
+  startNewSeason: vi.fn(),
 }));
 vi.mock("../src/domain/rankingService.js", async () => {
   const actual = await vi.importActual<typeof import("../src/domain/rankingService.js")>("../src/domain/rankingService.js");
@@ -58,21 +57,6 @@ function entry(overrides: Partial<LadderRow> = {}): LadderRow {
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
-    ...overrides,
-  };
-}
-
-function seasonStatsRow(overrides: Partial<SeasonStatsRow> = {}): SeasonStatsRow {
-  return {
-    sheetRow: 2,
-    discordUserId: "u1",
-    discordName: "user#1",
-    characterName: "Frosty",
-    element: "Cold",
-    build: "Vita",
-    defends: 2,
-    wins: 5,
-    losses: 3,
     ...overrides,
   };
 }
@@ -113,10 +97,9 @@ beforeEach(() => {
   vi.mocked(matchesRepo.getMatchById).mockReset();
   vi.mocked(matchesRepo.updateMatch).mockReset();
   vi.mocked(bannedRepo.addBan).mockReset();
-  vi.mocked(seasonStatsRepo.getAllRows).mockReset().mockResolvedValue([]);
-  vi.mocked(seasonStatsRepo.clearAll).mockReset();
-  vi.mocked(seasonStatsRepo.archiveSeason).mockReset();
-  vi.mocked(seasonStatsRepo.archiveTabExists).mockReset().mockResolvedValue(false);
+  vi.mocked(seasonStatsRepo.backfillInactiveEntries).mockReset();
+  vi.mocked(seasonStatsRepo.startNewSeason).mockReset();
+  vi.mocked(seasonStatsRepo.tabExists).mockReset().mockResolvedValue(false);
   vi.mocked(rankingService.shuffleRanks).mockReset().mockReturnValue([]);
 });
 
@@ -207,21 +190,18 @@ describe("forceCancelMatch", () => {
 });
 
 describe("resetLadderEndSeason", () => {
-  it("archives the current season's stats under the given name and resets them", async () => {
+  it("backfills inactive ladder entries then starts a new season tab under the given name", async () => {
     vi.mocked(matchesRepo.getPendingMatches).mockResolvedValue([]);
-    vi.mocked(ladderRepo.getLadder).mockResolvedValue([]);
-    vi.mocked(seasonStatsRepo.getAllRows).mockResolvedValue([seasonStatsRow()]);
+    const ladder = [entry({ sheetRow: 2 })];
+    vi.mocked(ladderRepo.getLadder).mockResolvedValue(ladder);
 
     const result = await resetLadderEndSeason("Season 3");
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.seasonName).toBe("Season 3");
-    expect(seasonStatsRepo.archiveSeason).toHaveBeenCalledWith(
-      "Season 3",
-      expect.arrayContaining([expect.objectContaining({ discordUserId: "u1", wins: 5, losses: 3, defends: 2 })]),
-    );
-    expect(seasonStatsRepo.clearAll).toHaveBeenCalled();
+    expect(result.newSeasonName).toBe("Season 3");
+    expect(seasonStatsRepo.backfillInactiveEntries).toHaveBeenCalledWith(ladder);
+    expect(seasonStatsRepo.startNewSeason).toHaveBeenCalledWith("Season 3");
   });
 
   it("sanitizes forbidden sheet-title characters out of the given name", async () => {
@@ -232,37 +212,22 @@ describe("resetLadderEndSeason", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.seasonName).toBe("Test-Season- 1");
-    expect(seasonStatsRepo.archiveTabExists).toHaveBeenCalledWith("Test-Season- 1");
+    expect(result.newSeasonName).toBe("Test-Season- 1");
+    expect(seasonStatsRepo.tabExists).toHaveBeenCalledWith("Test-Season- 1");
+    expect(seasonStatsRepo.startNewSeason).toHaveBeenCalledWith("Test-Season- 1");
   });
 
-  it("rejects a name that collides with an already-archived season, making no changes", async () => {
-    vi.mocked(seasonStatsRepo.archiveTabExists).mockResolvedValue(true);
+  it("rejects a name that collides with an existing tab, making no changes", async () => {
+    vi.mocked(seasonStatsRepo.tabExists).mockResolvedValue(true);
 
     const result = await resetLadderEndSeason("Test");
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.reason).toMatch(/already been archived/);
+    expect(result.reason).toMatch(/already exists/);
     expect(matchesRepo.getPendingMatches).not.toHaveBeenCalled();
-    expect(seasonStatsRepo.archiveSeason).not.toHaveBeenCalled();
-    expect(seasonStatsRepo.clearAll).not.toHaveBeenCalled();
-  });
-
-  it("includes ladder entries with no recorded season activity at 0/0/0, so quiet players still show up", async () => {
-    vi.mocked(matchesRepo.getPendingMatches).mockResolvedValue([]);
-    const quietEntry = entry({ sheetRow: 5, discordUserId: "u-quiet", characterName: "Ghost", element: "Fire" });
-    vi.mocked(ladderRepo.getLadder).mockResolvedValue([quietEntry]);
-    vi.mocked(seasonStatsRepo.getAllRows).mockResolvedValue([]);
-
-    await resetLadderEndSeason("Season 1");
-
-    expect(seasonStatsRepo.archiveSeason).toHaveBeenCalledWith(
-      "Season 1",
-      expect.arrayContaining([
-        expect.objectContaining({ discordUserId: "u-quiet", characterName: "Ghost", defends: 0, wins: 0, losses: 0 }),
-      ]),
-    );
+    expect(seasonStatsRepo.backfillInactiveEntries).not.toHaveBeenCalled();
+    expect(seasonStatsRepo.startNewSeason).not.toHaveBeenCalled();
   });
 
   it("cancels every pending match", async () => {
@@ -331,8 +296,8 @@ describe("shuffleLadderRanks", () => {
     expect(ladderRepo.sortLadderByRank).toHaveBeenCalled();
     expect(result.changedCount).toBe(2);
     expect(matchesRepo.getPendingMatches).not.toHaveBeenCalled();
-    expect(seasonStatsRepo.clearAll).not.toHaveBeenCalled();
-    expect(seasonStatsRepo.archiveSeason).not.toHaveBeenCalled();
+    expect(seasonStatsRepo.backfillInactiveEntries).not.toHaveBeenCalled();
+    expect(seasonStatsRepo.startNewSeason).not.toHaveBeenCalled();
   });
 
   it("skips writes when nothing changes", async () => {

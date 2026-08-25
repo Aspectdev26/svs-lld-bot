@@ -41,15 +41,16 @@ export async function handleShuffleStart(interaction: ButtonInteraction): Promis
   );
   await interaction.reply({
     content:
-      "⚠️ This will **archive this season's defends/wins/losses** under a name you choose, **reset those stats to 0** for " +
-      "everyone, **cancel every active match**, and **randomize everyone's rank order**. All-time stats are unaffected. " +
+      "⚠️ This will **cancel every active match**, **randomize everyone's rank order**, and start a **new season** " +
+      "under a name you choose — its defends/wins/losses will track live in its own tab from here on. The season " +
+      "that just ended keeps whatever tab it's already been using, untouched. All-time stats are unaffected. " +
       "This can't be undone. Are you sure?",
     components: [row],
     ephemeral: true,
   });
 }
 
-/** Confirm/cancel on the warning prompt. Confirming opens a modal to name the season (that name becomes the archive tab title). */
+/** Confirm/cancel on the warning prompt. Confirming opens a modal to name the new season (that name becomes its live stats tab title). */
 export async function handleShuffleResolve(interaction: ButtonInteraction): Promise<void> {
   if (!(await requireLeagueManager(interaction))) return;
 
@@ -61,12 +62,12 @@ export async function handleShuffleResolve(interaction: ButtonInteraction): Prom
 
   const modal = new ModalBuilder()
     .setCustomId(SEASON_NAME_MODAL_ID)
-    .setTitle("End Season")
+    .setTitle("Start New Season")
     .addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId(SEASON_NAME_INPUT_ID)
-          .setLabel('Season name (e.g. "Season 1")')
+          .setLabel('New season name (e.g. "Season 2")')
           .setStyle(TextInputStyle.Short)
           .setRequired(true)
           .setMaxLength(100),
@@ -91,22 +92,22 @@ export async function handleShuffleNameModal(interaction: ModalSubmitInteraction
     return;
   }
 
-  const { changedCount, cancelledMatches, seasonName } = result;
+  const { changedCount, cancelledMatches, newSeasonName } = result;
   for (const match of cancelledMatches) {
     await closeMatchChannel(interaction.client, match, "Ladder reset by admin");
   }
 
   await interaction.editReply({
-    content: `Done. Season archived to the "${seasonName}" tab. ${changedCount} entries moved, ${cancelledMatches.length} active match(es) cancelled.`,
+    content: `Done. **${newSeasonName}** has started and its stats will track live in the "${newSeasonName}" tab. ${changedCount} entries moved, ${cancelledMatches.length} active match(es) cancelled.`,
   });
   scheduleReplyCleanup(interaction);
 
   const embed = new EmbedBuilder()
-    .setTitle("🏆 Season Ended")
+    .setTitle("🏆 New Season Started")
     .setDescription(
-      `<@${interaction.user.id}> ended **${seasonName}** — its defends/wins/losses have been archived and reset, ` +
-        `every rank has been randomized` +
-        (cancelledMatches.length > 0 ? `, and ${cancelledMatches.length} active match(es) were cancelled.` : "."),
+      `<@${interaction.user.id}> started **${newSeasonName}** — every rank has been randomized` +
+        (cancelledMatches.length > 0 ? `, and ${cancelledMatches.length} active match(es) were cancelled.` : ".") +
+        ` Season stats now track live in the **${newSeasonName}** tab.`,
     )
     .setColor(0x992d22);
   await notify.challenges(interaction.client, { embeds: [embed] });

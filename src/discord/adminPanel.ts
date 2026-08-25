@@ -18,9 +18,10 @@ function buildPanelContent() {
   const embed = new EmbedBuilder()
     .setTitle("League Manager Dashboard")
     .setDescription(
-      "**Reset Ladder (End Season)** — asks for a name (that becomes the archive tab title), then archives this " +
-        "season's defends/wins/losses under it, resets those stats to 0, cancels all active matches, and randomizes " +
-        "everyone's rank order. All-time stats are unaffected. Requires confirmation.\n" +
+      "**Reset Ladder (End Season)** — cancels all active matches, randomizes everyone's rank order, and asks for a " +
+        "name for the new season that's starting — its defends/wins/losses track live in a tab titled with that " +
+        "name from here on. The season that just ended keeps the tab it was already using, untouched. All-time " +
+        "stats are unaffected. Requires confirmation.\n" +
         "**Remove Player** — pick one character (by name) to take off the ladder.\n" +
         "**Ban Player** — removes them and blocks future sign-ups for the chosen scope, with a reason.\n" +
         "**Unban** — reverses an existing ban.\n" +

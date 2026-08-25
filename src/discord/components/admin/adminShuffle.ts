@@ -66,7 +66,7 @@ export async function handleShuffleResolve(interaction: ButtonInteraction): Prom
       new ActionRowBuilder<TextInputBuilder>().addComponents(
         new TextInputBuilder()
           .setCustomId(SEASON_NAME_INPUT_ID)
-          .setLabel('Name this season (e.g. "Season 1", "Test Season")')
+          .setLabel('Season name (e.g. "Season 1")')
           .setStyle(TextInputStyle.Short)
           .setRequired(true)
           .setMaxLength(100),

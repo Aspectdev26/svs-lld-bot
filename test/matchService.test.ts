@@ -13,6 +13,7 @@ vi.mock("../src/sheets/matchesRepo.js", () => ({
   getMatchById: vi.fn(),
   updateMatch: vi.fn(),
   addMatch: vi.fn(),
+  getAllMatches: vi.fn(),
 }));
 vi.mock("../src/domain/rank1Tracker.js", () => ({
   recordMatchResult: vi.fn(),
@@ -21,7 +22,7 @@ vi.mock("../src/domain/rank1Tracker.js", () => ({
 import * as ladderRepo from "../src/sheets/ladderRepo.js";
 import * as matchesRepo from "../src/sheets/matchesRepo.js";
 import * as rank1Tracker from "../src/domain/rank1Tracker.js";
-import { reportWin } from "../src/domain/matchService.js";
+import { reportWin, getChallengeCooldownExpiry } from "../src/domain/matchService.js";
 
 function ladderRow(overrides: Partial<LadderRow> = {}): LadderRow {
   return {
@@ -136,5 +137,78 @@ describe("reportWin", () => {
       expect(result.match.winnerUserId).toBe("u2");
     }
     expect(ladderRepo.setRank).not.toHaveBeenCalled();
+  });
+});
+
+describe("getChallengeCooldownExpiry", () => {
+  it("returns null when this challenger entry never lost to this defender entry", async () => {
+    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([]);
+    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    expect(expiry).toBeNull();
+  });
+
+  it("returns null once the loss is well outside any reasonable cooldown window", async () => {
+    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
+      matchRow({
+        status: "Reported",
+        challengerUserId: "u1",
+        challengerElement: "Cold",
+        defenderUserId: "u2",
+        defenderElement: "Cold",
+        winnerUserId: "u2",
+        resolvedAt: new Date(Date.now() - 1000 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    ]);
+    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    expect(expiry).toBeNull();
+  });
+
+  it("returns a future expiry for a very recent loss to that exact defender entry", async () => {
+    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
+      matchRow({
+        status: "Reported",
+        challengerUserId: "u1",
+        challengerElement: "Cold",
+        defenderUserId: "u2",
+        defenderElement: "Cold",
+        winnerUserId: "u2",
+        resolvedAt: new Date().toISOString(),
+      }),
+    ]);
+    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    expect(expiry).not.toBeNull();
+    expect(expiry!.getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it("ignores a win (the challenger wasn't the one who lost)", async () => {
+    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
+      matchRow({
+        status: "Reported",
+        challengerUserId: "u1",
+        challengerElement: "Cold",
+        defenderUserId: "u2",
+        defenderElement: "Cold",
+        winnerUserId: "u1",
+        resolvedAt: new Date().toISOString(),
+      }),
+    ]);
+    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    expect(expiry).toBeNull();
+  });
+
+  it("ignores a loss to a different element-entry of the same defender", async () => {
+    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
+      matchRow({
+        status: "Reported",
+        challengerUserId: "u1",
+        challengerElement: "Cold",
+        defenderUserId: "u2",
+        defenderElement: "Fire",
+        winnerUserId: "u2",
+        resolvedAt: new Date().toISOString(),
+      }),
+    ]);
+    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    expect(expiry).toBeNull();
   });
 });

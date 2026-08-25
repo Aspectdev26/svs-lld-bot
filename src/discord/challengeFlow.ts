@@ -71,9 +71,15 @@ export async function attemptChallenge(
     return;
   }
 
-  const [challengerPending, defenderPending] = await Promise.all([
+  const [challengerPending, defenderPending, cooldownExpiresAt] = await Promise.all([
     matchService.entryHasPendingMatch(challengerEntry.discordUserId, challengerEntry.element),
     matchService.entryHasPendingMatch(defenderEntry.discordUserId, defenderEntry.element),
+    matchService.getChallengeCooldownExpiry(
+      challengerEntry.discordUserId,
+      challengerEntry.element,
+      defenderEntry.discordUserId,
+      defenderEntry.element,
+    ),
   ]);
 
   const rejection = checkChallenge({
@@ -82,6 +88,7 @@ export async function attemptChallenge(
     defender: defenderEntry,
     challengerEntryHasPendingMatch: challengerPending,
     defenderEntryHasPendingMatch: defenderPending,
+    cooldownExpiresAt,
     rules: config.rules,
   });
 

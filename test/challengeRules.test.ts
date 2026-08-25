@@ -167,6 +167,40 @@ describe("checkChallenge - vacation and pending matches", () => {
   });
 });
 
+describe("checkChallenge - post-loss cooldown", () => {
+  it("rejects re-challenging the same defender while a cooldown is active", () => {
+    const ladder = buildLadder(12);
+    const challenger = ladder.find((r) => r.rank === 5)!;
+    const defender = ladder.find((r) => r.rank === 4)!;
+    const result = checkChallenge({
+      ladder,
+      challenger,
+      defender,
+      challengerEntryHasPendingMatch: false,
+      defenderEntryHasPendingMatch: false,
+      cooldownExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      rules,
+    });
+    expect(result).toMatch(/cooldown/);
+  });
+
+  it("allows the challenge once no cooldown is passed in", () => {
+    const ladder = buildLadder(12);
+    const challenger = ladder.find((r) => r.rank === 5)!;
+    const defender = ladder.find((r) => r.rank === 4)!;
+    const result = checkChallenge({
+      ladder,
+      challenger,
+      defender,
+      challengerEntryHasPendingMatch: false,
+      defenderEntryHasPendingMatch: false,
+      cooldownExpiresAt: null,
+      rules,
+    });
+    expect(result).toBeNull();
+  });
+});
+
 describe("getEligibleTargets - skip-self counting", () => {
   it("does not count the challenger's own other-element rows against their range", () => {
     // Ladder: rank1..rank5 all different users, except rank3 belongs to the same user as the rank5 challenger.

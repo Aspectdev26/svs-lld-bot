@@ -44,6 +44,7 @@ export const config = {
     dodgeEligibleAfterMs: int("DODGE_ELIGIBLE_AFTER_MS", 24 * 60 * 60 * 1000),
     schedulerIntervalMs: int("SCHEDULER_INTERVAL_MS", 10 * 60 * 1000),
     extensionGrantMs: int("EXTENSION_GRANT_MS", 2 * 24 * 60 * 60 * 1000),
+    challengeCooldownMs: int("CHALLENGE_COOLDOWN_MS", 24 * 60 * 60 * 1000),
   },
   rules: {
     challengeRange: int("CHALLENGE_RANGE", 3),

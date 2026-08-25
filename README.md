@@ -65,6 +65,10 @@ requests with screenshot evidence.
   Discord can't hide a shared message's buttons per-viewer, so an unregistered user who clicks **Challenge** gets
   an immediate "you're not registered" reply rather than the button silently doing nothing or being invisible to
   them — that's the practical equivalent of "not accessible" the platform allows.
+- **Post-loss cooldown**: after a reported loss, that specific element-entry can't re-challenge the exact entry it
+  lost to for 24h (`CHALLENGE_COOLDOWN_MS`) — an attempt during the cooldown is rejected with when it lifts. Only a
+  reported loss counts (a dodge-approved match always credits the win to its own challenger, so it never triggers
+  this), and it's scoped to that specific matchup — other targets are unaffected.
 - **All-time stats**: the `All Time Stats` tab is a permanent, append-only record covering every ladder
   participant, not just rank-1 holders — a row is created (at 0/0/0) for a character the first time they win or
   lose *any* match, at any rank, and their all-time `Wins`/`Losses` totals climb from there for as long as they're
@@ -237,7 +241,9 @@ league. To speed up expiry/warning testing, temporarily lower `MATCH_LIFESPAN_MS
    Try the button as an unregistered account too — confirm it replies with a "you're not registered" error instead
    of doing anything. On a valid challenge, confirm a private channel appears under **Current Challenges** visible
    only to the two participants + League Managers, a permanent "New challenge" post lands in the results channel,
-   and the pinned **Active Challenges** list in `#challenges` updates in place to include it.
+   and the pinned **Active Challenges** list in `#challenges` updates in place to include it. Report a loss for the
+   challenger, then immediately try challenging that same defender entry again — confirm it's rejected with a
+   cooldown message naming when it lifts, while challenging a *different* eligible target still works.
 3. `/report-win` and the channel's **Report Win** button — confirm both show the winner dropdown with nothing
    pre-selected. Try a normal self-report (pick your own name), then try picking the *opponent's* name instead
    (concede/correct) and confirm ranks only swap when the challenger is the one picked as winner. Confirm the

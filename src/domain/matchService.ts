@@ -18,6 +18,35 @@ export async function entryHasPendingMatch(discordUserId: string, element: Eleme
   return match !== undefined;
 }
 
+/**
+ * If `challengerElement`'s entry most recently lost to `defenderElement`'s entry within the
+ * configured cooldown window, returns when that cooldown lifts; otherwise null. Only a reported
+ * loss counts — a dodge-approved match always credits the win to its own challenger, so it can
+ * never represent this challenger losing.
+ */
+export async function getChallengeCooldownExpiry(
+  challengerUserId: string,
+  challengerElement: Element,
+  defenderUserId: string,
+  defenderElement: Element,
+): Promise<Date | null> {
+  const all = await matchesRepo.getAllMatches();
+  const losses = all.filter(
+    (m) =>
+      m.status === "Reported" &&
+      m.challengerUserId === challengerUserId &&
+      m.challengerElement === challengerElement &&
+      m.defenderUserId === defenderUserId &&
+      m.defenderElement === defenderElement &&
+      m.winnerUserId === defenderUserId,
+  );
+  if (losses.length === 0) return null;
+
+  const mostRecentResolvedAt = losses.reduce((latest, m) => (m.resolvedAt > latest ? m.resolvedAt : latest), "");
+  const expiry = new Date(Date.parse(mostRecentResolvedAt) + config.timing.challengeCooldownMs);
+  return expiry.getTime() > Date.now() ? expiry : null;
+}
+
 /** Fetches both ladder entries for a match and clears their Ladder-sheet "Challenge" display. */
 async function clearLadderChallengeDisplay(match: MatchRow): Promise<void> {
   const [challengerEntry, defenderEntry] = await Promise.all([

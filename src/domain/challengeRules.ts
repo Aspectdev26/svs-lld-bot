@@ -48,12 +48,15 @@ export interface ChallengeCheckParams {
   challengerEntryHasPendingMatch: boolean;
   /** Whether the defender's specific element-entry already has a pending match. */
   defenderEntryHasPendingMatch: boolean;
+  /** When the challenger's post-loss cooldown against this exact defender entry lifts, if they're currently on one. */
+  cooldownExpiresAt?: Date | null;
   rules: ChallengeRuleConfig;
 }
 
 /** Returns null if the challenge is allowed, otherwise a human-readable rejection reason. */
 export function checkChallenge(params: ChallengeCheckParams): string | null {
-  const { ladder, challenger, defender, challengerEntryHasPendingMatch, defenderEntryHasPendingMatch, rules } = params;
+  const { ladder, challenger, defender, challengerEntryHasPendingMatch, defenderEntryHasPendingMatch, cooldownExpiresAt, rules } =
+    params;
 
   if (challenger.discordUserId === defender.discordUserId) {
     return "you can't challenge yourself.";
@@ -63,6 +66,10 @@ export function checkChallenge(params: ChallengeCheckParams): string | null {
   }
   if (defender.status === "Vacation") {
     return `${defender.characterName} is currently on Vacation and can't be challenged.`;
+  }
+  if (cooldownExpiresAt) {
+    const expiresUnix = Math.floor(cooldownExpiresAt.getTime() / 1000);
+    return `you're on a cooldown after losing to ${defender.characterName} — you can challenge them again <t:${expiresUnix}:R> (<t:${expiresUnix}:f>).`;
   }
   if (challengerEntryHasPendingMatch) {
     return `your ${formatElement(challenger.element)} entry already has a match in progress — resolve it before challenging again with that element.`;

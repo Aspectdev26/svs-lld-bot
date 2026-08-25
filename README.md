@@ -13,6 +13,12 @@ requests with screenshot evidence.
   announcement to `#announcements`; Deny opens a reason modal and DMs the requester (falls back to a `#register`
   mention if DMs are closed). There's no self-service `/signup` command — every ladder entry goes through this
   admin-reviewed flow.
+- **Leaving the ladder**: `#register` also has a standing **Leave Ladder** button. If you only have one entry it
+  goes straight to a confirmation; with more than one it first asks which element-entry you mean. Confirming
+  removes that entry and closes the gap — everyone ranked below it shifts up by one. If that entry is in an active
+  match, leaving reports the match as **a loss for you** (your opponent is credited the win, including any rank
+  swap) before the entry is removed, exactly like a normal reported result. Leaving isn't reversible — you'd need
+  to sign up (and be re-approved) to rejoin.
 - **Character names are unique per element+build**: you can't sign up with a name someone else already has on the
   ladder (or already has pending review) for that exact element+build combo (case-insensitive) — pick a different
   name instead. The one exception: you can reclaim your *own* former name/element/build combo (e.g. after being
@@ -59,10 +65,11 @@ requests with screenshot evidence.
   Discord can't hide a shared message's buttons per-viewer, so an unregistered user who clicks **Challenge** gets
   an immediate "you're not registered" reply rather than the button silently doing nothing or being invisible to
   them — that's the practical equivalent of "not accessible" the platform allows.
-- **Rank 1 defends**: the `Rank1Defends` tab always tracks the current rank-1 holder's name and how many
-  consecutive successful defenses they have. It increments when the rank-1 holder wins a challenge against them,
-  and resets to 0 for whoever newly takes rank 1 (by winning a challenge or an approved dodge). Announced in
-  the results channel alongside the match result.
+- **Rank 1 defends**: the `All Time Stats` tab is a permanent, append-only record of every player (per element)
+  who has ever held rank 1, with their all-time count of successful title defenses — rows are never deleted or
+  overwritten when someone else takes the #1 spot, so it doubles as a hall-of-fame list. The defend count
+  increments when the rank-1 holder wins a challenge against them, and is preserved (not reset) if that player
+  later reclaims rank 1 after losing it. Announced in the results channel alongside the match result.
 - **One match per element**: a player can have up to 3 matches running at once (one per element), but a given
   element-entry can only be in one match at a time.
 - **Match channels**: issuing a challenge (`/challenge`) auto-creates a private text channel under the
@@ -90,7 +97,7 @@ requests with screenshot evidence.
   `EXTENSION_GRANT_MS` (default 2 days) and re-arms the 24h-before-expiry warning.
 - **Scheduler**: polls the `Matches` sheet every 10 minutes (configurable). Warns both players 24h before a match's
   72h expiry, and auto-expires (no rank change) matches that go the full 72h with no result.
-- **League Manager dashboard**: a pinned message in `#league-managers` with eight buttons, all gated to the
+- **League Manager dashboard**: a pinned message in `#league-managers` with ten buttons, all gated to the
   `League Manager` role (the panel refreshes itself in place on every bot restart, so adding buttons in a future
   update doesn't require deleting the old pinned post by hand):
   - **Reset Ladder (Shuffle)** — cancels every active match and randomizes rank order among all current entries.
@@ -114,6 +121,12 @@ requests with screenshot evidence.
     that entry between Available and Vacation. This is the *only* way to set Vacation — there's no self-service
     command, so a player can't accidentally make themselves un-challengeable (or dodge a challenge) without a
     League Manager's say-so.
+  - **Shuffle Ranks** — randomizes rank order only, with no season archiving or match cancellation (unlike Reset
+    Ladder). Warns first if there are currently active challenges, since shuffling ranks mid-challenge can make the
+    challenge context (who challenged whom, at what rank) confusing. Requires a confirmation click.
+  - **Pause/Resume Ladder** — a toggle. Pausing blocks new challenges from being issued and freezes the countdown
+    on every already-active match; resuming shifts each of those matches' expiry forward by exactly how long the
+    ladder was paused, so no one loses time to the pause. Backed by a new single-row `Settings` tab.
   Every League Manager action is announced in the results channel so the whole server can see what changed and who
   did it — `#rankings` is left alone, reserved for the pinned Top 10 leaderboard only. A new `BannedUsers` tab
   tracks active bans (`Element` is either one element or `ALL`).
@@ -152,7 +165,8 @@ requests with screenshot evidence.
    `GOOGLE_PRIVATE_KEY` (keep it as one line with literal `\n` sequences — that's how Google exports it).
 3. Create a new Google Sheet (or use an existing one), **share it with the service account email as Editor**.
 4. Copy the sheet ID from its URL (`https://docs.google.com/spreadsheets/d/<THIS_PART>/edit`) → `GOOGLE_SHEET_ID`.
-5. The bot creates the `Ladder`, `Matches`, `Dodges`, `Rank1Defends`, `SignupRequests`, and `BannedUsers` tabs (with
+5. The bot creates the `Ladder`, `Matches`, `Dodges`, `All Time Stats`, `SeasonStats`, `SignupRequests`, `BannedUsers`, and
+   `Settings` tabs (with
    headers) automatically on first run if they don't already exist — and backfills new columns onto an existing tab's
    header row if the schema grows in a future update, without touching existing data rows.
 

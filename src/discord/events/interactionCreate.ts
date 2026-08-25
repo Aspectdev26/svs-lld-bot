@@ -4,7 +4,15 @@ import { handleDodgeButton, DENY_MODAL_PREFIX } from "../components/dodgeButtons
 import { handleDodgeDenyModal } from "../components/dodgeDenyModal.js";
 import { handleMatchChannelButton } from "../components/matchChannelButtons.js";
 import { handleExtensionButton } from "../components/extensionButtons.js";
-import { REGISTER_START_BUTTON_ID } from "../registerPanel.js";
+import { REGISTER_START_BUTTON_ID, LEAVE_LADDER_BUTTON_ID } from "../registerPanel.js";
+import {
+  handleLeaveLadderStartButton,
+  handleLeaveLadderElementSelect,
+  handleLeaveLadderResolve,
+  LEAVE_ELEMENT_SELECT_ID,
+  LEAVE_CONFIRM_PREFIX,
+  LEAVE_CANCEL_ID,
+} from "../components/leaveLadderFlow.js";
 import {
   handleRegisterStartButton,
   handleElementSelect,
@@ -22,7 +30,7 @@ import {
   handleChallengeTargetSelect,
 } from "../components/challengeFlowButtons.js";
 import { ADMIN_BUTTON_IDS } from "../adminPanel.js";
-import { handleShuffleStart, handleShuffleResolve } from "../components/admin/adminShuffle.js";
+import { handleShuffleStart, handleShuffleResolve, handleShuffleNameModal, SEASON_NAME_MODAL_ID } from "../components/admin/adminShuffle.js";
 import {
   handleRemoveStart,
   handleRemoveCharacterSelect,
@@ -36,6 +44,12 @@ import {
   handleUnbanSelect,
 } from "../components/admin/adminPlayerActions.js";
 import { handleVacationStart, handleVacationSelect, VACATION_SELECT_ID } from "../components/admin/adminVacation.js";
+import {
+  handleRankShuffleStart,
+  handleRankShuffleResolve,
+  RANK_SHUFFLE_RESOLVE_IDS,
+} from "../components/admin/adminRankShuffle.js";
+import { handlePauseToggle } from "../components/admin/adminPause.js";
 import {
   handleCancelMatchStart,
   handleCancelMatchSelect,
@@ -76,6 +90,7 @@ const ADMIN_BAN_ELEMENT_SELECT_PREFIX = "admin_ban_element:";
 const ADMIN_SETRANK_ELEMENT_SELECT_PREFIX = "admin_setrank_element:";
 const ADMIN_SETRANK_MODAL_PREFIX = "admin_setrank_modal:";
 const WINNER_SELECT_PREFIX_WITH_COLON = `${WINNER_SELECT_PREFIX}:`;
+const LEAVE_RESOLVE_PREFIXES = [`${LEAVE_CONFIRM_PREFIX}:`, LEAVE_CANCEL_ID];
 
 export function registerInteractionEvent(client: Client): void {
   client.on("interactionCreate", async (interaction) => {
@@ -128,6 +143,8 @@ export function registerInteractionEvent(client: Client): void {
           await handleVacationSelect(interaction);
         } else if (interaction.customId.startsWith(WINNER_SELECT_PREFIX_WITH_COLON)) {
           await handleWinnerSelect(interaction);
+        } else if (interaction.customId === LEAVE_ELEMENT_SELECT_ID) {
+          await handleLeaveLadderElementSelect(interaction);
         }
         return;
       }
@@ -135,6 +152,10 @@ export function registerInteractionEvent(client: Client): void {
       if (interaction.isButton()) {
         if (interaction.customId === REGISTER_START_BUTTON_ID) {
           await handleRegisterStartButton(interaction);
+        } else if (interaction.customId === LEAVE_LADDER_BUTTON_ID) {
+          await handleLeaveLadderStartButton(interaction);
+        } else if (LEAVE_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+          await handleLeaveLadderResolve(interaction);
         } else if (interaction.customId === CHALLENGE_START_BUTTON_ID) {
           await handleChallengeStartButton(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.shuffle) {
@@ -159,6 +180,12 @@ export function registerInteractionEvent(client: Client): void {
           await handlePendingSignupsStart(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.vacation) {
           await handleVacationStart(interaction);
+        } else if (interaction.customId === ADMIN_BUTTON_IDS.rankShuffle) {
+          await handleRankShuffleStart(interaction);
+        } else if (RANK_SHUFFLE_RESOLVE_IDS.includes(interaction.customId)) {
+          await handleRankShuffleResolve(interaction);
+        } else if (interaction.customId === ADMIN_BUTTON_IDS.pauseToggle) {
+          await handlePauseToggle(interaction);
         } else if (REGISTER_APPROVE_DENY_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
           await handleRegisterApproveDenyButton(interaction);
         } else if (DODGE_BUTTON_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
@@ -182,6 +209,8 @@ export function registerInteractionEvent(client: Client): void {
           await handleBanReasonModal(interaction);
         } else if (interaction.customId.startsWith(ADMIN_SETRANK_MODAL_PREFIX)) {
           await handleSetRankModal(interaction);
+        } else if (interaction.customId === SEASON_NAME_MODAL_ID) {
+          await handleShuffleNameModal(interaction);
         }
         return;
       }

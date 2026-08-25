@@ -2,6 +2,7 @@ import { EmbedBuilder, type Client } from "discord.js";
 import { config } from "../config.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
 import { expireMatch } from "../domain/matchService.js";
+import { isLadderPaused } from "../domain/ladderPauseService.js";
 import { notify } from "../discord/notify.js";
 import { refreshActiveChallengesPanel } from "../discord/activeChallengesPanel.js";
 import { formatElement } from "../util/formatElement.js";
@@ -12,6 +13,8 @@ async function checkMatches(client: Client): Promise<void> {
   if (running) return; // avoid overlapping runs if a previous pass is still working through Sheets API calls
   running = true;
   try {
+    if (await isLadderPaused()) return; // active match timers are frozen while the ladder is paused
+
     const pending = await matchesRepo.getPendingMatches();
     const now = Date.now();
 

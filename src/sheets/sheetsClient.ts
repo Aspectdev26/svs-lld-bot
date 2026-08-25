@@ -91,6 +91,46 @@ export async function clearSheetRow(sheetName: string, rowNumber: number, column
   });
 }
 
+/** Writes multiple contiguous rows in one API call (e.g. seeding a new archive tab). */
+export async function writeSheetRows(sheetName: string, startRow: number, rows: (string | number)[][]): Promise<void> {
+  if (rows.length === 0) return;
+  await queue.run(async () => {
+    const lastCol = String.fromCharCode("A".charCodeAt(0) + rows[0].length - 1);
+    const endRow = startRow + rows.length - 1;
+    await getSheetsApi().spreadsheets.values.update({
+      spreadsheetId: config.sheets.sheetId,
+      range: `${sheetName}!A${startRow}:${lastCol}${endRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: rows },
+    });
+  });
+}
+
+/** Clears every value in the given A1 range (e.g. wiping all data rows out of a sheet). */
+export async function clearSheetRange(sheetName: string, range: string): Promise<void> {
+  await queue.run(async () => {
+    await getSheetsApi().spreadsheets.values.clear({
+      spreadsheetId: config.sheets.sheetId,
+      range: `${sheetName}!${range}`,
+    });
+  });
+}
+
+/** Creates a new tab with the given title. No-ops silently if it already exists. */
+export async function addSheetTab(title: string): Promise<void> {
+  await queue.run(async () => {
+    try {
+      await getSheetsApi().spreadsheets.batchUpdate({
+        spreadsheetId: config.sheets.sheetId,
+        requestBody: { requests: [{ addSheet: { properties: { title } } }] },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (!message.includes("already exists")) throw err;
+    }
+  });
+}
+
 export async function updateSheetCell(
   sheetName: string,
   rowNumber: number,

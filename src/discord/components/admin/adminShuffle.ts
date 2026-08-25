@@ -1,66 +1,112 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type ButtonInteraction, type GuildMember } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  type ButtonInteraction,
+  type GuildMember,
+  type ModalSubmitInteraction,
+} from "discord.js";
 import { isLeagueManager } from "../../permissions.js";
-import { shuffleLadder } from "../../../domain/adminService.js";
+import { resetLadderEndSeason } from "../../../domain/adminService.js";
 import { closeMatchChannel } from "../../matchChannels.js";
 import { notify } from "../../notify.js";
 import { refreshTop10Panel } from "../../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../../activeChallengesPanel.js";
-import { scheduleReplyCleanup, scheduleMessageCleanup } from "../../ephemeralCleanup.js";
+import { scheduleReplyCleanup } from "../../ephemeralCleanup.js";
 
 const CONFIRM_ID = "admin_shuffle_confirm";
 const CANCEL_ID = "admin_shuffle_cancel";
+export const SEASON_NAME_MODAL_ID = "admin_shuffle_name_modal";
+const SEASON_NAME_INPUT_ID = "season_name";
 
-export async function handleShuffleStart(interaction: ButtonInteraction): Promise<void> {
+async function requireLeagueManager(interaction: ButtonInteraction | ModalSubmitInteraction): Promise<boolean> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
     await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
     scheduleReplyCleanup(interaction);
-    return;
+    return false;
   }
+  return true;
+}
+
+export async function handleShuffleStart(interaction: ButtonInteraction): Promise<void> {
+  if (!(await requireLeagueManager(interaction))) return;
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(CONFIRM_ID).setLabel("Yes, shuffle the ladder").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(CONFIRM_ID).setLabel("Yes, end the season").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId(CANCEL_ID).setLabel("Cancel").setStyle(ButtonStyle.Secondary),
   );
   await interaction.reply({
     content:
-      "⚠️ This will **cancel every active match** and **randomize everyone's rank order**. This can't be undone. Are you sure?",
+      "⚠️ This will **archive this season's defends/wins/losses** under a name you choose, **reset those stats to 0** for " +
+      "everyone, **cancel every active match**, and **randomize everyone's rank order**. All-time stats are unaffected. " +
+      "This can't be undone. Are you sure?",
     components: [row],
     ephemeral: true,
   });
 }
 
+/** Confirm/cancel on the warning prompt. Confirming opens a modal to name the season (that name becomes the archive tab title). */
 export async function handleShuffleResolve(interaction: ButtonInteraction): Promise<void> {
-  if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
-    scheduleReplyCleanup(interaction);
-    return;
-  }
+  if (!(await requireLeagueManager(interaction))) return;
 
   if (interaction.customId === CANCEL_ID) {
-    await interaction.update({ content: "Shuffle cancelled — no changes made.", components: [] });
+    await interaction.update({ content: "Season end cancelled — no changes made.", components: [] });
     scheduleReplyCleanup(interaction);
     return;
   }
 
-  await interaction.update({ content: "Shuffling the ladder…", components: [] });
+  const modal = new ModalBuilder()
+    .setCustomId(SEASON_NAME_MODAL_ID)
+    .setTitle("End Season")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId(SEASON_NAME_INPUT_ID)
+          .setLabel('Name this season (e.g. "Season 1", "Test Season")')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100),
+      ),
+    );
+  await interaction.showModal(modal);
+}
 
-  const { changedCount, cancelledMatches } = await shuffleLadder();
+export async function handleShuffleNameModal(interaction: ModalSubmitInteraction): Promise<void> {
+  if (!(await requireLeagueManager(interaction))) return;
+
+  // Ack before the (potentially many sequential) Sheets writes — easily slow enough under load to
+  // blow past Discord's 3s interaction deadline.
+  await interaction.deferReply({ ephemeral: true });
+
+  const seasonNameInput = interaction.fields.getTextInputValue(SEASON_NAME_INPUT_ID);
+  const result = await resetLadderEndSeason(seasonNameInput);
+
+  if (!result.ok) {
+    await interaction.editReply({ content: result.reason });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
+
+  const { changedCount, cancelledMatches, seasonName } = result;
   for (const match of cancelledMatches) {
     await closeMatchChannel(interaction.client, match, "Ladder reset by admin");
   }
 
-  const followUp = await interaction.followUp({
-    content: `Done. ${changedCount} entries moved, ${cancelledMatches.length} active match(es) cancelled.`,
-    ephemeral: true,
+  await interaction.editReply({
+    content: `Done. Season archived to the "${seasonName}" tab. ${changedCount} entries moved, ${cancelledMatches.length} active match(es) cancelled.`,
   });
   scheduleReplyCleanup(interaction);
-  scheduleMessageCleanup(followUp);
 
   const embed = new EmbedBuilder()
-    .setTitle("🎲 Ladder Reset")
+    .setTitle("🏆 Season Ended")
     .setDescription(
-      `<@${interaction.user.id}> shuffled the ladder — every rank has been randomized` +
-        (cancelledMatches.length > 0 ? ` and ${cancelledMatches.length} active match(es) were cancelled.` : "."),
+      `<@${interaction.user.id}> ended **${seasonName}** — its defends/wins/losses have been archived and reset, ` +
+        `every rank has been randomized` +
+        (cancelledMatches.length > 0 ? `, and ${cancelledMatches.length} active match(es) were cancelled.` : "."),
     )
     .setColor(0x992d22);
   await notify.challenges(interaction.client, { embeds: [embed] });

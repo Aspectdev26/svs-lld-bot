@@ -8,7 +8,7 @@ vi.mock("../src/sheets/ladderRepo.js", () => ({
   addLadderEntry: vi.fn(),
 }));
 vi.mock("../src/sheets/rank1Repo.js", () => ({
-  setRank1Holder: vi.fn(),
+  crownHolder: vi.fn(),
 }));
 vi.mock("../src/sheets/signupRequestsRepo.js", () => ({
   getPendingRequestForUserElement: vi.fn(),
@@ -70,7 +70,7 @@ beforeEach(() => {
   vi.mocked(ladderRepo.findByCharacterNameElementBuild).mockReset().mockResolvedValue(undefined);
   vi.mocked(ladderRepo.getLadder).mockReset();
   vi.mocked(ladderRepo.addLadderEntry).mockReset();
-  vi.mocked(rank1Repo.setRank1Holder).mockReset();
+  vi.mocked(rank1Repo.crownHolder).mockReset();
   vi.mocked(signupRequestsRepo.getPendingRequestForUserElement).mockReset();
   vi.mocked(signupRequestsRepo.findPendingByCharacterNameElementBuild).mockReset().mockResolvedValue(undefined);
   vi.mocked(signupRequestsRepo.getRequestById).mockReset();
@@ -188,7 +188,7 @@ describe("approveSignup", () => {
     expect(entry.rank).toBe(3);
     expect(entry.characterName).toBe("Frosty");
     expect(ladderRepo.addLadderEntry).toHaveBeenCalledTimes(1);
-    expect(rank1Repo.setRank1Holder).not.toHaveBeenCalled();
+    expect(rank1Repo.crownHolder).not.toHaveBeenCalled();
     expect(signupRequestsRepo.updateRequest).toHaveBeenCalledWith(expect.objectContaining({ status: "Approved" }));
   });
 
@@ -198,7 +198,7 @@ describe("approveSignup", () => {
     const { entry } = await approveSignup(requestRow(), "admin1");
 
     expect(entry.rank).toBe(1);
-    expect(rank1Repo.setRank1Holder).toHaveBeenCalledTimes(1);
+    expect(rank1Repo.crownHolder).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,4 +1,5 @@
 import * as rank1Repo from "../sheets/rank1Repo.js";
+import * as seasonStatsRepo from "../sheets/seasonStatsRepo.js";
 import type { LadderRow } from "../types.js";
 
 export type Rank1Update =
@@ -7,10 +8,12 @@ export type Rank1Update =
   | { changed: true; kind: "newChampion"; holderName: string };
 
 /**
- * Call after a match resolves (reported win or approved dodge) to keep the Rank1Defends tab in
- * sync. `preMatchDefenderRank` must be the defender's rank *before* any swap was applied — only
- * matches involving the rank-1 holder as defender are relevant (a challenger can never already be
- * rank 1, since you can only challenge players ranked above you).
+ * Call after a match resolves (reported win or approved dodge, including dodges) to keep the
+ * win/loss/defend stats in sync — both the current-season tally and the permanent all-time tally.
+ * `preMatchDefenderRank` must be the defender's rank *before* any swap was applied — title-defense
+ * tracking only kicks in for matches involving the rank-1 holder as defender (a challenger can
+ * never already be rank 1, since you can only challenge players ranked above you); win/loss
+ * tracking applies to every match regardless of rank.
  */
 export async function recordMatchResult(
   preMatchDefenderRank: number,
@@ -18,20 +21,39 @@ export async function recordMatchResult(
   challengerEntry: LadderRow,
   winnerIsChallenger: boolean,
 ): Promise<Rank1Update> {
+  const winnerEntry = winnerIsChallenger ? challengerEntry : defenderEntry;
+  const loserEntry = winnerIsChallenger ? defenderEntry : challengerEntry;
+
+  await Promise.all([
+    rank1Repo.recordWin(winnerEntry),
+    rank1Repo.recordLoss(loserEntry),
+    seasonStatsRepo.recordWin(winnerEntry),
+    seasonStatsRepo.recordLoss(loserEntry),
+  ]);
+
   if (preMatchDefenderRank !== 1) return { changed: false };
 
   if (winnerIsChallenger) {
-    await rank1Repo.setRank1Holder(challengerEntry, 0);
+    await rank1Repo.crownHolder(challengerEntry);
     return { changed: true, kind: "newChampion", holderName: challengerEntry.characterName };
   }
 
-  const current = await rank1Repo.getRank1Row();
-  if (current && current.discordUserId === defenderEntry.discordUserId && current.element === defenderEntry.element) {
-    await rank1Repo.incrementDefends(current);
-    return { changed: true, kind: "defended", holderName: defenderEntry.characterName, defends: current.defends + 1 };
-  }
+  const [defends] = await Promise.all([rank1Repo.recordDefend(defenderEntry), seasonStatsRepo.recordDefend(defenderEntry)]);
+  return { changed: true, kind: "defended", holderName: defenderEntry.characterName, defends };
+}
 
-  // Tracker was empty or out of sync with the sheet (e.g. the tab was blank) — (re)initialize it.
-  await rank1Repo.setRank1Holder(defenderEntry, 1);
-  return { changed: true, kind: "defended", holderName: defenderEntry.characterName, defends: 1 };
+/**
+ * Reconciles the All Time Stats tracker to whoever now actually sits at rank 1 on `ladder` — for
+ * rank shakeups that didn't go through a reported match (admin overrides, a player leaving the
+ * ladder outright). Leaves the holder's defend total alone if they didn't change; crowns (or
+ * re-crowns) whoever now holds rank 1 otherwise.
+ */
+export async function syncToCurrentHolder(ladder: LadderRow[]): Promise<void> {
+  const newHolder = ladder.find((r) => r.rank === 1);
+  if (!newHolder) return;
+  const current = await rank1Repo.getCurrentHolderRow();
+  if (current && current.discordUserId === newHolder.discordUserId && current.element === newHolder.element) {
+    return; // same holder as before — leave their defend total alone
+  }
+  await rank1Repo.crownHolder(newHolder);
 }

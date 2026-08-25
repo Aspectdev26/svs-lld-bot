@@ -98,7 +98,7 @@ export async function approveSignup(request: SignupRequestRow, resolvedByUserId:
   await ladderRepo.addLadderEntry(newEntry);
 
   if (rank === 1) {
-    await rank1Repo.setRank1Holder({ ...newEntry, sheetRow: -1 }, 0);
+    await rank1Repo.crownHolder({ ...newEntry, sheetRow: -1 });
   }
 
   request.status = "Approved";

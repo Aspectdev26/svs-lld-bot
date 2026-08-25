@@ -82,7 +82,12 @@ export interface DodgeRow {
   denyReason: string;
 }
 
-/** Tracks the current rank-1 holder and how many consecutive successful title defenses they have. */
+/**
+ * One permanent row per player (per element) who has ever held rank 1. `defends` is their all-time
+ * total of successful title defenses — it survives losing and later reclaiming rank 1, and rows are
+ * never deleted or overwritten by another player, so the tab doubles as a hall-of-fame list.
+ * `currentHolder` flags whichever single row is the reigning rank-1 holder right now.
+ */
 export interface Rank1Row {
   sheetRow: number;
   discordUserId: string;
@@ -92,6 +97,28 @@ export interface Rank1Row {
   build: Build;
   defends: number;
   holderSince: string;
+  currentHolder: boolean;
+  /** All-time total of matches won (any rank), not just title defenses. */
+  wins: number;
+  /** All-time total of matches lost (any rank). */
+  losses: number;
+}
+
+/**
+ * One row per player (per element) with any recorded activity in the current season — defends,
+ * wins, and losses since the last "Reset Ladder (End Season)". Wiped (and snapshotted to a
+ * `Season N` tab) every time the ladder is reset for a new season.
+ */
+export interface SeasonStatsRow {
+  sheetRow: number;
+  discordUserId: string;
+  discordName: string;
+  characterName: string;
+  element: Element;
+  build: Build;
+  defends: number;
+  wins: number;
+  losses: number;
 }
 
 export const SIGNUP_STATUSES = ["Pending", "Approved", "Denied"] as const;

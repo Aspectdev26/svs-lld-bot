@@ -2,6 +2,7 @@ import { ActionRowBuilder, EmbedBuilder, StringSelectMenuBuilder, type Repliable
 import { config } from "../config.js";
 import * as matchService from "../domain/matchService.js";
 import { checkChallenge, getEligibleTargets } from "../domain/challengeRules.js";
+import { isLadderPaused } from "../domain/ladderPauseService.js";
 import { createMatchChannel } from "./matchChannels.js";
 import { notify } from "./notify.js";
 import { refreshActiveChallengesPanel } from "./activeChallengesPanel.js";
@@ -58,6 +59,16 @@ export async function attemptChallenge(
     await interaction.deferReply({ ephemeral: true });
   }
   const respond = (alreadyAcked ? interaction.followUp : interaction.editReply).bind(interaction);
+
+  if (await isLadderPaused()) {
+    const sent = await respond({
+      content: "The ladder is currently paused by League Managers — new challenges can't be issued right now.",
+      ephemeral: true,
+    });
+    scheduleReplyCleanup(interaction);
+    if (alreadyAcked) scheduleMessageCleanup(sent);
+    return;
+  }
 
   const [challengerPending, defenderPending] = await Promise.all([
     matchService.entryHasPendingMatch(challengerEntry.discordUserId, challengerEntry.element),

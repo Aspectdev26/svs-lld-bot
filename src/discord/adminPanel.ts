@@ -10,13 +10,17 @@ export const ADMIN_BUTTON_IDS = {
   setRank: "admin_setrank_start",
   pendingSignups: "admin_pending_signups_start",
   vacation: "admin_vacation_start",
+  rankShuffle: "admin_rankshuffle_start",
+  pauseToggle: "admin_pause_toggle",
 } as const;
 
 function buildPanelContent() {
   const embed = new EmbedBuilder()
     .setTitle("League Manager Dashboard")
     .setDescription(
-      "**Reset Ladder (Shuffle)** — cancels all active matches and randomizes everyone's rank order. Requires confirmation.\n" +
+      "**Reset Ladder (End Season)** — asks for a name (that becomes the archive tab title), then archives this " +
+        "season's defends/wins/losses under it, resets those stats to 0, cancels all active matches, and randomizes " +
+        "everyone's rank order. All-time stats are unaffected. Requires confirmation.\n" +
         "**Remove Player** — pick one character (by name) to take off the ladder.\n" +
         "**Ban Player** — removes them and blocks future sign-ups for the chosen scope, with a reason.\n" +
         "**Unban** — reverses an existing ban.\n" +
@@ -24,12 +28,16 @@ function buildPanelContent() {
         "**Set Rank** — manually moves a player to an exact rank, shifting others out of the way.\n" +
         "**Pending Sign-ups** — view and approve/deny any sign-up request, even if its original post in this " +
         "channel never showed up.\n" +
-        "**Vacation** — pick one character (by name) to toggle Vacation/Available.",
+        "**Vacation** — pick one character (by name) to toggle Vacation/Available.\n" +
+        "**Shuffle Ranks** — just randomizes everyone's rank order, no season archiving or match cancellation. " +
+        "Warns you first if there are active challenges. Requires confirmation.\n" +
+        "**Pause/Resume Ladder** — pausing blocks new challenges from being issued and freezes the timers on " +
+        "already-active matches; resuming shifts those timers forward by however long the ladder was paused.",
     )
     .setColor(0x992d22);
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.shuffle).setLabel("Reset Ladder (Shuffle)").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.shuffle).setLabel("Reset Ladder (End Season)").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.remove).setLabel("Remove Player").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.ban).setLabel("Ban Player").setStyle(ButtonStyle.Danger),
   );
@@ -42,8 +50,12 @@ function buildPanelContent() {
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.pendingSignups).setLabel("Pending Sign-ups").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.vacation).setLabel("Vacation").setStyle(ButtonStyle.Secondary),
   );
+  const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.rankShuffle).setLabel("Shuffle Ranks").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.pauseToggle).setLabel("Pause/Resume Ladder").setStyle(ButtonStyle.Danger),
+  );
 
-  return { embeds: [embed], components: [row1, row2, row3] };
+  return { embeds: [embed], components: [row1, row2, row3, row4] };
 }
 
 /** Posts (and pins) the League Manager admin dashboard to #league-managers, or refreshes it in place if it already exists. */

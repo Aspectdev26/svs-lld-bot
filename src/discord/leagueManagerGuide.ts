@@ -1,19 +1,18 @@
-import { EmbedBuilder, type Client, type TextChannel } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import { config } from "../config.js";
 
-const GUIDE_TITLE = "📘 League Manager Guide";
-
-function buildPanelContent() {
+/** Consolidated League Manager reference — shown on demand via the Dashboard's Guide button. */
+export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
   const overview = new EmbedBuilder()
-    .setTitle(GUIDE_TITLE)
+    .setTitle("📘 League Manager Guide")
     .setDescription(
       "Single up-to-date reference for how the league bot works and what League Managers can do. The action " +
-        "buttons themselves live on the **Dashboard** message pinned below this one — this post is the explainer " +
-        "that goes with it.\n\n**Channels**\n" +
+        "buttons themselves live on the **Dashboard** — click **Guide** there any time to pull this back up.\n\n" +
+        "**Channels**\n" +
         `⚔️ <#${config.channels.challenges}> — pinned **Challenge** button + the always-current **Active Challenges** list. Nothing else posts here.\n` +
         `📜 <#${config.channels.challengeResults}> — permanent log of every challenge issued, match result, dodge/extension outcome, sign-up approval, and expiry warning/notice. The place to check "what happened."\n` +
         `🏆 <#${config.channels.rankings}> — pinned Top 10 leaderboard image, kept updated automatically, with a link to the full sheet.\n` +
-        `🛡️ this channel — the Dashboard (below) plus every pending approval: sign-ups, dodge requests, and extension requests.\n` +
+        `🛡️ this channel — the Dashboard plus every pending approval: sign-ups, dodge requests, and extension requests.\n` +
         `📝 <#${config.channels.register}> — **Sign Up** and **Leave Ladder** buttons.\n` +
         `📢 <#${config.channels.announcements}> — only used when a player leaves the ladder; everything else posts to the results channel above.`,
     )
@@ -73,29 +72,5 @@ function buildPanelContent() {
     )
     .setColor(0x3498db);
 
-  return { embeds: [overview, howItWorks, resetHowTo, statsAndHelp] };
-}
-
-/** Posts (and pins) the consolidated League Manager guide to #league-managers, or refreshes it in place if it already exists. */
-export async function ensureLeagueManagerGuidePanel(client: Client): Promise<void> {
-  const channel = await client.channels.fetch(config.channels.leagueManagers);
-  if (!channel || !channel.isTextBased()) {
-    console.error(`LEAGUE_MANAGERS_CHANNEL_ID (${config.channels.leagueManagers}) is not a text channel`);
-    return;
-  }
-  const textChannel = channel as TextChannel;
-
-  const { items: pinned } = await textChannel.messages.fetchPins();
-  const existing = pinned.find(
-    ({ message: m }) => m.author.id === client.user?.id && m.embeds.some((e) => e.title === GUIDE_TITLE),
-  )?.message;
-
-  const content = buildPanelContent();
-  if (existing) {
-    await existing.edit(content);
-    return;
-  }
-
-  const message = await textChannel.send(content);
-  await message.pin().catch((err) => console.error("Failed to pin League Manager guide panel:", err));
+  return [overview, howItWorks, resetHowTo, statsAndHelp];
 }

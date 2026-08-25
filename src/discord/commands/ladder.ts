@@ -1,5 +1,6 @@
 import { EmbedBuilder, SlashCommandBuilder } from "discord.js";
 import * as ladderRepo from "../../sheets/ladderRepo.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 import { formatElement } from "../../util/formatElement.js";
 import type { Command } from "../commandTypes.js";
 
@@ -17,6 +18,7 @@ export const ladderCommand: Command = {
 
     if (ladder.length === 0) {
       await interaction.reply({ content: "The ladder is empty — be the first to sign up in #register!", ephemeral: true });
+      scheduleReplyCleanup(interaction);
       return;
     }
 
@@ -24,6 +26,7 @@ export const ladderCommand: Command = {
     const slice = ladder.slice(start, start + PAGE_SIZE);
     if (slice.length === 0) {
       await interaction.reply({ content: `No entries on page ${page}.`, ephemeral: true });
+      scheduleReplyCleanup(interaction);
       return;
     }
 

@@ -10,6 +10,7 @@ import { config } from "../config.js";
 import * as dodgesRepo from "../sheets/dodgesRepo.js";
 import { isDodgeEligible, createDodgeRequest } from "../domain/dodgeService.js";
 import { notify } from "./notify.js";
+import { scheduleReplyCleanup } from "./ephemeralCleanup.js";
 import { formatElement } from "../util/formatElement.js";
 import type { MatchRow } from "../types.js";
 
@@ -26,10 +27,12 @@ export async function submitDodgeRequest(
   const participants = [match.challengerUserId, match.defenderUserId];
   if (!participants.includes(interaction.user.id)) {
     await interaction.reply({ content: "You're not a participant in that match.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
   if (match.status !== "Pending") {
     await interaction.reply({ content: "That match isn't currently active.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
   if (!isDodgeEligible(match)) {
@@ -37,6 +40,7 @@ export async function submitDodgeRequest(
       content: "You can only request a dodge once 24 hours have passed with no result on this match.",
       ephemeral: true,
     });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -47,6 +51,7 @@ export async function submitDodgeRequest(
   const existingDodge = await dodgesRepo.getPendingDodgeForMatch(match.matchId);
   if (existingDodge) {
     await interaction.editReply({ content: "A dodge request for this match is already pending review." });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -56,10 +61,12 @@ export async function submitDodgeRequest(
   const stored = await dodgesRepo.getDodgeById(dodge.dodgeId);
   if (!stored) {
     await interaction.editReply({ content: "Something went wrong recording the dodge request — try again." });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   await interaction.editReply({ content: "Dodge request submitted to League Managers for review." });
+  scheduleReplyCleanup(interaction);
 
   const leagueManagerRole = interaction.guild?.roles.cache.find((r) => r.name === config.leagueManagerRoleName);
 

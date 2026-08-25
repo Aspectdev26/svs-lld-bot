@@ -10,6 +10,7 @@ export const ADMIN_BUTTON_IDS = {
   setRank: "admin_setrank_start",
   pendingSignups: "admin_pending_signups_start",
   vacation: "admin_vacation_start",
+  guide: "admin_guide_show",
   rankShuffle: "admin_rankshuffle_start",
   pauseToggle: "admin_pause_toggle",
 } as const;
@@ -33,27 +34,29 @@ function buildPanelContent() {
         "**Shuffle Ranks** — just randomizes everyone's rank order, no season archiving or match cancellation. " +
         "Warns you first if there are active challenges. Requires confirmation.\n" +
         "**Pause/Resume Ladder** — pausing blocks new challenges from being issued and freezes the timers on " +
-        "already-active matches; resuming shifts those timers forward by however long the ladder was paused.",
+        "already-active matches; resuming shifts those timers forward by however long the ladder was paused.\n" +
+        "**Guide** — pulls up the full League Manager reference (channels, rules, how-tos), visible only to you.",
     )
     .setColor(0x992d22);
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.shuffle).setLabel("Reset Ladder (End Season)").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.remove).setLabel("Remove Player").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.remove).setLabel("Remove Player").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.ban).setLabel("Ban Player").setStyle(ButtonStyle.Danger),
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.unban).setLabel("Unban").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.cancelMatch).setLabel("Force-Cancel Match").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.setRank).setLabel("Set Rank").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.unban).setLabel("Unban").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.cancelMatch).setLabel("Force-Cancel Match").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.setRank).setLabel("Set Rank").setStyle(ButtonStyle.Primary),
   );
   const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.pendingSignups).setLabel("Pending Sign-ups").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.vacation).setLabel("Vacation").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.vacation).setLabel("Vacation").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.guide).setLabel("Guide").setStyle(ButtonStyle.Primary),
   );
   const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.rankShuffle).setLabel("Shuffle Ranks").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.pauseToggle).setLabel("Pause/Resume Ladder").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.rankShuffle).setLabel("Shuffle Ranks").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.pauseToggle).setLabel("Pause/Resume Ladder").setStyle(ButtonStyle.Primary),
   );
 
   return { embeds: [embed], components: [row1, row2, row3, row4] };

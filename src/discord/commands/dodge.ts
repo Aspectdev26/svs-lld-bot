@@ -3,6 +3,7 @@ import * as matchesRepo from "../../sheets/matchesRepo.js";
 import { isDodgeEligible } from "../../domain/dodgeService.js";
 import { buildMatchChoices } from "../matchChoices.js";
 import { submitDodgeRequest } from "../dodgeFlow.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 import type { Command } from "../commandTypes.js";
 
 export const dodgeCommand: Command = {
@@ -32,6 +33,7 @@ export const dodgeCommand: Command = {
     const match = await matchesRepo.getMatchById(matchId);
     if (!match) {
       await interaction.reply({ content: "That match isn't currently active.", ephemeral: true });
+      scheduleReplyCleanup(interaction);
       return;
     }
 

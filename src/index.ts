@@ -6,7 +6,6 @@ import { startMatchWatcher } from "./scheduler/matchWatcher.js";
 import { ensureRegisterPanel } from "./discord/registerPanel.js";
 import { ensureChallengePanel } from "./discord/challengePanel.js";
 import { ensureAdminPanel } from "./discord/adminPanel.js";
-import { ensureLeagueManagerGuidePanel } from "./discord/leagueManagerGuidePanel.js";
 import { refreshTop10Panel } from "./discord/top10Panel.js";
 import { refreshActiveChallengesPanel } from "./discord/activeChallengesPanel.js";
 import { ensureSheetTabs } from "./sheets/sheetsClient.js";
@@ -42,12 +41,7 @@ async function main() {
     startMatchWatcher(client);
     ensureRegisterPanel(client).catch((err) => console.error("Failed to post register panel:", err));
     ensureChallengePanel(client).catch((err) => console.error("Failed to post challenge panel:", err));
-    // Sequenced (not fire-and-forget like the others) so the guide message always lands with an
-    // earlier timestamp than the dashboard, keeping it visually above the dashboard in the channel.
-    ensureLeagueManagerGuidePanel(client)
-      .catch((err) => console.error("Failed to post League Manager guide panel:", err))
-      .then(() => ensureAdminPanel(client))
-      .catch((err) => console.error("Failed to post admin panel:", err));
+    ensureAdminPanel(client).catch((err) => console.error("Failed to post admin panel:", err));
     refreshTop10Panel(client).catch((err) => console.error("Failed to post top 10 panel:", err));
     refreshActiveChallengesPanel(client).catch((err) => console.error("Failed to post active challenges panel:", err));
   });

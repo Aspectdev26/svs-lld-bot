@@ -28,10 +28,12 @@ requests with screenshot evidence.
   dodge, or extension — is deleted the moment a manager approves or denies it (rather than sitting there forever
   with disabled buttons), and the small "Approved/Denied by..." confirmation that replaces it in that channel
   auto-deletes itself 5 seconds later. Keeps the channel showing only what's still actually pending.
-- **Ephemeral replies clean up after themselves too**: in `#league-managers`, `#challenges`, and `#register`, every
-  personal (only-you-can-see) bot reply that reaches a terminal step of its flow — a final confirmation, or a
-  rejection that ends things right there — deletes itself 5 seconds later instead of sitting there needing a manual
-  "Dismiss Message" click. Prompts still mid-flow (waiting on your next click or selection) are left alone.
+- **Ephemeral replies clean up after themselves too**: server-wide, every personal (only-you-can-see) bot reply that
+  reaches a terminal step of its flow — a final confirmation, or a rejection that ends things right there — deletes
+  itself 5 seconds later instead of sitting there needing a manual "Dismiss Message" click. Prompts still mid-flow
+  (waiting on your next click, selection, or upload) are left alone so you don't lose the instructions before you
+  can act on them, and the Dashboard's **Guide** reply is also exempt since it's reference material meant to be
+  read. None of this touches the permanent public posts in the results channel.
 - **Two separate channels split "issue a challenge" from "everything that happened"**: `#challenges` (the "Issue a
   Challenge" channel) just holds two pinned, standing panels — the **Challenge** button and the **Active
   Challenges** list (every currently pending match, refreshed after anything that creates, resolves, expires,
@@ -104,9 +106,10 @@ requests with screenshot evidence.
   `EXTENSION_GRANT_MS` (default 2 days) and re-arms the 24h-before-expiry warning.
 - **Scheduler**: polls the `Matches` sheet every 10 minutes (configurable). Warns both players 24h before a match's
   72h expiry, and auto-expires (no rank change) matches that go the full 72h with no result.
-- **League Manager dashboard**: a pinned message in `#league-managers` with ten buttons, all gated to the
+- **League Manager dashboard**: a pinned message in `#league-managers` with eleven buttons, all gated to the
   `League Manager` role (the panel refreshes itself in place on every bot restart, so adding buttons in a future
-  update doesn't require deleting the old pinned post by hand):
+  update doesn't require deleting the old pinned post by hand). All buttons are blue except **Ban Player** and
+  **Reset Ladder (End Season)**, which stay red to flag their higher stakes:
   - **Reset Ladder (End Season)** — cancels every active match, randomizes rank order among all current entries, and
     asks for a name for the new season that's starting. Season stats (defends/wins/losses) live in a tab named
     after the season — this creates a fresh, empty one under the given name and points future stat-tracking at it;
@@ -138,6 +141,10 @@ requests with screenshot evidence.
   - **Pause/Resume Ladder** — a toggle. Pausing blocks new challenges from being issued and freezes the countdown
     on every already-active match; resuming shifts each of those matches' expiry forward by exactly how long the
     ladder was paused, so no one loses time to the pause. Backed by a new single-row `Settings` tab.
+  - **Guide** — pulls up the consolidated League Manager reference (channels, player-facing rules, the Reset
+    Ladder walkthrough, stats tracking) as a reply visible only to whoever clicked it. Unlike other dashboard
+    replies it does *not* auto-dismiss after 5s — it's reference material meant to be read, not a quick
+    confirmation, so it's dismissed manually.
   Every League Manager action is announced in the results channel so the whole server can see what changed and who
   did it — `#rankings` is left alone, reserved for the pinned Top 10 leaderboard only. A new `BannedUsers` tab
   tracks active bans (`Element` is either one element or `ALL`).

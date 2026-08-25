@@ -1,5 +1,6 @@
 import type { StringSelectMenuInteraction } from "discord.js";
 import { WINNER_SELECT_PREFIX, finalizeReportWin } from "../reportWinFlow.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 
 /** Shared by both the /report-win slash command and the in-channel Report Win button flows. */
 export async function handleWinnerSelect(interaction: StringSelectMenuInteraction): Promise<void> {
@@ -13,8 +14,10 @@ export async function handleWinnerSelect(interaction: StringSelectMenuInteractio
   const result = await finalizeReportWin(interaction.client, interaction.user.id, matchId, winnerUserId);
   if (!result.ok) {
     await interaction.editReply({ content: `Couldn't report that win: ${result.reason}` });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   await interaction.editReply({ content: `Win reported! <@${winnerUserId}> won the match.` });
+  scheduleReplyCleanup(interaction);
 }

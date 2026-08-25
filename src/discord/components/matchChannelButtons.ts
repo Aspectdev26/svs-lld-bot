@@ -15,11 +15,13 @@ import { notify } from "../notify.js";
 import { closeMatchChannel } from "../matchChannels.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
 import { formatElement } from "../../util/formatElement.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 
 async function handleReportWin(interaction: ButtonInteraction, matchId: string): Promise<void> {
   const prompt = await buildWinnerPrompt(matchId, interaction.user.id);
   if (!prompt.ok) {
     await interaction.reply({ content: prompt.reason, ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -30,10 +32,12 @@ async function handleDodgeStart(interaction: ButtonInteraction, matchId: string)
   const match = await matchesRepo.getMatchById(matchId);
   if (!match || match.status !== "Pending") {
     await interaction.reply({ content: "That match isn't currently active.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
   if (![match.challengerUserId, match.defenderUserId].includes(interaction.user.id)) {
     await interaction.reply({ content: "You're not a participant in that match.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
   if (!isDodgeEligible(match)) {
@@ -41,6 +45,7 @@ async function handleDodgeStart(interaction: ButtonInteraction, matchId: string)
       content: "You can only request a dodge once 24 hours have passed with no result on this match.",
       ephemeral: true,
     });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -59,6 +64,7 @@ async function handleDodgeSubmit(interaction: ButtonInteraction, matchId: string
   const match = await matchesRepo.getMatchById(matchId);
   if (!match) {
     await interaction.reply({ content: "That match isn't currently active.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -74,6 +80,7 @@ async function handleDodgeSubmit(interaction: ButtonInteraction, matchId: string
       content: "I couldn't find a screenshot you uploaded in this channel — attach the image as a message here, then click Submit again.",
       ephemeral: true,
     });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -84,20 +91,24 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
   const match = await matchesRepo.getMatchById(matchId);
   if (!match || match.status !== "Pending") {
     await interaction.reply({ content: "That match isn't currently active.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
   if (![match.challengerUserId, match.defenderUserId].includes(interaction.user.id)) {
     await interaction.reply({ content: "You're not a participant in that match.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
   if (match.extensionPending) {
     await interaction.reply({ content: "An extension request for this match is already pending review.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
   await interaction.deferReply({ ephemeral: true });
   await matchesRepo.setExtensionPending(match.sheetRow, true);
   await interaction.editReply({ content: "Extension request submitted to League Managers for review." });
+  scheduleReplyCleanup(interaction);
 
   const leagueManagerRole = interaction.guild?.roles.cache.find((r) => r.name === config.leagueManagerRoleName);
   const embed = new EmbedBuilder()
@@ -131,10 +142,12 @@ async function handleCancelMatch(interaction: ButtonInteraction, matchId: string
   const match = await matchesRepo.getMatchById(matchId);
   if (!match || match.status !== "Pending") {
     await interaction.reply({ content: "That match isn't currently active.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
   if (![match.challengerUserId, match.defenderUserId].includes(interaction.user.id)) {
     await interaction.reply({ content: "You're not a participant in that match.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
     return;
   }
 
@@ -154,6 +167,7 @@ async function handleCancelMatch(interaction: ButtonInteraction, matchId: string
       content: `You've already requested to cancel this match — waiting on <@${otherUserId}> to confirm.`,
       ephemeral: true,
     });
+    scheduleReplyCleanup(interaction);
     return;
   }
 

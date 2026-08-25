@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "discord.js";
 import { buildMatchChoices } from "../matchChoices.js";
 import { buildWinnerPrompt } from "../reportWinFlow.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 import type { Command } from "../commandTypes.js";
 
 export const reportWinCommand: Command = {
@@ -25,6 +26,7 @@ export const reportWinCommand: Command = {
     const prompt = await buildWinnerPrompt(matchId, interaction.user.id);
     if (!prompt.ok) {
       await interaction.editReply({ content: prompt.reason });
+      scheduleReplyCleanup(interaction);
       return;
     }
 

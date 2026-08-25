@@ -31,6 +31,7 @@ import {
 } from "../components/challengeFlowButtons.js";
 import { ADMIN_BUTTON_IDS } from "../adminPanel.js";
 import { maybeTrollAdminAction } from "../troll.js";
+import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 import { handleShuffleStart, handleShuffleResolve, handleShuffleNameModal, SEASON_NAME_MODAL_ID } from "../components/admin/adminShuffle.js";
 import {
   handleRemoveStart,
@@ -51,6 +52,7 @@ import {
   RANK_SHUFFLE_RESOLVE_IDS,
 } from "../components/admin/adminRankShuffle.js";
 import { handlePauseToggle } from "../components/admin/adminPause.js";
+import { handleGuideButton } from "../components/admin/adminGuide.js";
 import {
   handleCancelMatchStart,
   handleCancelMatchSelect,
@@ -188,6 +190,8 @@ export function registerInteractionEvent(client: Client): void {
           await handleRankShuffleResolve(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.pauseToggle) {
           await handlePauseToggle(interaction);
+        } else if (interaction.customId === ADMIN_BUTTON_IDS.guide) {
+          await handleGuideButton(interaction);
         } else if (REGISTER_APPROVE_DENY_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
           await handleRegisterApproveDenyButton(interaction);
         } else if (DODGE_BUTTON_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
@@ -225,6 +229,7 @@ export function registerInteractionEvent(client: Client): void {
       if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
         await interaction
           .reply({ content: "Something went wrong handling that — please try again.", ephemeral: true })
+          .then(() => scheduleReplyCleanup(interaction))
           .catch(() => undefined);
       }
     }

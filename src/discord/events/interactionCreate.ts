@@ -53,7 +53,13 @@ import {
 import { WINNER_SELECT_PREFIX } from "../reportWinFlow.js";
 import { handleWinnerSelect } from "../components/reportWinSelect.js";
 
-const MATCH_CHANNEL_BUTTON_PREFIXES = ["matchch_report:", "matchch_dodge:", "matchch_dodge_submit:", "matchch_extend:"];
+const MATCH_CHANNEL_BUTTON_PREFIXES = [
+  "matchch_report:",
+  "matchch_dodge:",
+  "matchch_dodge_submit:",
+  "matchch_extend:",
+  "matchch_cancel:",
+];
 const EXTENSION_BUTTON_PREFIXES = ["extend_approve:", "extend_deny:"];
 const DODGE_BUTTON_PREFIXES = ["dodge_approve:", "dodge_deny:"];
 const REGISTER_APPROVE_DENY_PREFIXES = ["reg_approve:", "reg_deny:"];

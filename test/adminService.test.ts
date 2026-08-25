@@ -68,6 +68,7 @@ function matchRow(overrides: Partial<MatchRow> = {}): MatchRow {
     resolvedAt: "",
     channelId: "",
     extensionPending: false,
+    cancelRequestedByUserId: "",
     ...overrides,
   };
 }

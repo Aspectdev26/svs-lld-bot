@@ -34,7 +34,7 @@ export async function submitDodgeRequest(
   }
   if (!isDodgeEligible(match)) {
     await interaction.reply({
-      content: "You can only request a dodge once 48 hours have passed with no result on this match.",
+      content: "You can only request a dodge once 24 hours have passed with no result on this match.",
       ephemeral: true,
     });
     return;

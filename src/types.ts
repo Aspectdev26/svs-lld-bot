@@ -62,6 +62,8 @@ export interface MatchRow {
   channelId: string;
   /** True while an extension request for this match is awaiting League Manager approval. */
   extensionPending: boolean;
+  /** Discord user ID of whichever participant first requested to cancel this match; blank if none. Both participants must request to actually cancel. */
+  cancelRequestedByUserId: string;
 }
 
 export const DODGE_STATUSES = ["Pending", "Approved", "Denied"] as const;

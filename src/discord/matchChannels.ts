@@ -42,6 +42,7 @@ export function matchActionRow(matchId: string): ActionRowBuilder<ButtonBuilder>
       .setCustomId(`matchch_extend:${matchId}`)
       .setLabel("Request Extension")
       .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`matchch_cancel:${matchId}`).setLabel("Cancel Match").setStyle(ButtonStyle.Danger),
   );
 }
 
@@ -101,9 +102,10 @@ export async function createMatchChannel(
       `⚔️ <@${challenger.discordUserId}> (**${formatElement(challenger.element)}**) vs <@${defender.discordUserId}> (**${formatElement(defender.element)}**)\n\n` +
         `Use this channel to arrange and play your match. Match expires <t:${expiresUnix}:F> (<t:${expiresUnix}:R>).\n\n` +
         `**Report Win** — either player can self-report the result once the match is played.\n` +
-        `**Request Dodge** — if your opponent hasn't responded in 48+ hours, request a dodge (you'll need a screenshot).\n` +
-        `**Request Extension** — ask a League Manager for 2 extra days if you both need more time.\n\n` +
-        `This channel is deleted automatically once a result is reported or a dodge is approved.`,
+        `**Request Dodge** — if your opponent hasn't responded in 24+ hours, request a dodge (you'll need a screenshot).\n` +
+        `**Request Extension** — ask a League Manager for 2 extra days if you both need more time.\n` +
+        `**Cancel Match** — voids the match with no rank change. Both players must click it to confirm.\n\n` +
+        `This channel is deleted automatically once a result is reported, a dodge is approved, or the match is cancelled.`,
     )
     .setColor(0xe67e22);
 

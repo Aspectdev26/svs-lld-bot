@@ -41,7 +41,7 @@ export const config = {
   timing: {
     matchLifespanMs: int("MATCH_LIFESPAN_MS", 72 * 60 * 60 * 1000),
     matchWarningLeadMs: int("MATCH_WARNING_LEAD_MS", 24 * 60 * 60 * 1000),
-    dodgeEligibleAfterMs: int("DODGE_ELIGIBLE_AFTER_MS", 48 * 60 * 60 * 1000),
+    dodgeEligibleAfterMs: int("DODGE_ELIGIBLE_AFTER_MS", 24 * 60 * 60 * 1000),
     schedulerIntervalMs: int("SCHEDULER_INTERVAL_MS", 10 * 60 * 1000),
     extensionGrantMs: int("EXTENSION_GRANT_MS", 2 * 24 * 60 * 60 * 1000),
   },

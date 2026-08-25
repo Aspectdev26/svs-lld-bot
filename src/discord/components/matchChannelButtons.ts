@@ -7,10 +7,13 @@ import {
 } from "discord.js";
 import { config } from "../../config.js";
 import * as matchesRepo from "../../sheets/matchesRepo.js";
+import * as matchService from "../../domain/matchService.js";
 import { isDodgeEligible } from "../../domain/dodgeService.js";
 import { submitDodgeRequest } from "../dodgeFlow.js";
 import { buildWinnerPrompt } from "../reportWinFlow.js";
 import { notify } from "../notify.js";
+import { closeMatchChannel } from "../matchChannels.js";
+import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
 import { formatElement } from "../../util/formatElement.js";
 
 async function handleReportWin(interaction: ButtonInteraction, matchId: string): Promise<void> {
@@ -35,7 +38,7 @@ async function handleDodgeStart(interaction: ButtonInteraction, matchId: string)
   }
   if (!isDodgeEligible(match)) {
     await interaction.reply({
-      content: "You can only request a dodge once 48 hours have passed with no result on this match.",
+      content: "You can only request a dodge once 24 hours have passed with no result on this match.",
       ephemeral: true,
     });
     return;
@@ -117,6 +120,62 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
   });
 }
 
+/**
+ * Cancelling a match with no rank change requires both participants to click Cancel Match:
+ * the first click just records the requester; the opponent clicking the same button confirms
+ * and actually cancels the match. Either participant can click again and see the other is
+ * still pending, but there's no way to "un-request" — cancelling is cheap enough (voids the
+ * match, no rank change) that we don't need a withdraw path.
+ */
+async function handleCancelMatch(interaction: ButtonInteraction, matchId: string): Promise<void> {
+  const match = await matchesRepo.getMatchById(matchId);
+  if (!match || match.status !== "Pending") {
+    await interaction.reply({ content: "That match isn't currently active.", ephemeral: true });
+    return;
+  }
+  if (![match.challengerUserId, match.defenderUserId].includes(interaction.user.id)) {
+    await interaction.reply({ content: "You're not a participant in that match.", ephemeral: true });
+    return;
+  }
+
+  const otherUserId = interaction.user.id === match.challengerUserId ? match.defenderUserId : match.challengerUserId;
+
+  if (!match.cancelRequestedByUserId) {
+    await interaction.deferReply();
+    await matchesRepo.setCancelRequestedBy(match.sheetRow, interaction.user.id);
+    await interaction.editReply({
+      content: `🚫 <@${interaction.user.id}> wants to cancel this match. <@${otherUserId}>, click **Cancel Match** to confirm — both players must agree.`,
+    });
+    return;
+  }
+
+  if (match.cancelRequestedByUserId === interaction.user.id) {
+    await interaction.reply({
+      content: `You've already requested to cancel this match — waiting on <@${otherUserId}> to confirm.`,
+      ephemeral: true,
+    });
+    return;
+  }
+
+  // The other participant just confirmed — both sides agree, so cancel for real.
+  await interaction.deferReply();
+  await matchService.cancelMatch(match);
+
+  const embed = new EmbedBuilder()
+    .setTitle("Match cancelled")
+    .setDescription(
+      `🚫 Match \`${match.matchId}\` between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and <@${match.defenderUserId}> (${formatElement(match.defenderElement)}) was cancelled by mutual agreement. No rank change.`,
+    )
+    .setColor(0x95a5a6);
+  await notify.challenges(interaction.client, { embeds: [embed] });
+
+  await interaction.editReply({ content: "✅ Both players agreed — match cancelled. This channel will now close." });
+  await closeMatchChannel(interaction.client, match, "Cancelled by mutual agreement");
+  await refreshActiveChallengesPanel(interaction.client).catch((err) =>
+    console.error("Failed to refresh active challenges panel:", err),
+  );
+}
+
 export async function handleMatchChannelButton(interaction: ButtonInteraction): Promise<void> {
   const [action, matchId] = interaction.customId.split(":");
 
@@ -132,6 +191,9 @@ export async function handleMatchChannelButton(interaction: ButtonInteraction): 
       return;
     case "matchch_extend":
       await handleExtensionRequest(interaction, matchId);
+      return;
+    case "matchch_cancel":
+      await handleCancelMatch(interaction, matchId);
       return;
   }
 }

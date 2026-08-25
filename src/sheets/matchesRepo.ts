@@ -18,6 +18,7 @@ export const MATCHES_HEADERS = [
   "ResolvedAt",
   "ChannelID",
   "ExtensionPending",
+  "CancelRequestedBy",
 ];
 
 function rowFromValues(sheetRow: number, v: string[]): MatchRow {
@@ -38,6 +39,7 @@ function rowFromValues(sheetRow: number, v: string[]): MatchRow {
     resolvedAt: v[12] ?? "",
     channelId: v[13] ?? "",
     extensionPending: (v[14] ?? "") === "TRUE",
+    cancelRequestedByUserId: v[15] ?? "",
   };
 }
 
@@ -58,11 +60,12 @@ function toValues(match: Omit<MatchRow, "sheetRow">): (string | number)[] {
     match.resolvedAt,
     match.channelId,
     match.extensionPending ? "TRUE" : "",
+    match.cancelRequestedByUserId,
   ];
 }
 
 export async function getAllMatches(): Promise<MatchRow[]> {
-  const values = await readSheetRange(`${MATCHES_SHEET}!A2:O`);
+  const values = await readSheetRange(`${MATCHES_SHEET}!A2:P`);
   return values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is MatchRow => r !== null);
@@ -116,6 +119,10 @@ export async function setChannelId(sheetRow: number, channelId: string): Promise
 
 export async function setExtensionPending(sheetRow: number, pending: boolean): Promise<void> {
   await updateSheetCell(MATCHES_SHEET, sheetRow, "O", pending ? "TRUE" : "");
+}
+
+export async function setCancelRequestedBy(sheetRow: number, userId: string): Promise<void> {
+  await updateSheetCell(MATCHES_SHEET, sheetRow, "P", userId);
 }
 
 export async function setExpiresAt(sheetRow: number, iso: string): Promise<void> {

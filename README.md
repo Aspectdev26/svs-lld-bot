@@ -79,7 +79,7 @@ requests with screenshot evidence.
   If the challenger is picked as the winner, ranks swap; if the defender wins, nothing changes.
 - **Vacation**: admin-only, via the League Manager dashboard's **Vacation** button — pick one character (by name,
   not Discord name) to toggle just that entry's status, leaving the player's other elements untouched.
-- **Dodges**: once 48h pass on a match with no result, either side can request a dodge — via `/dodge-request` with
+- **Dodges**: once 24h pass on a match with no result, either side can request a dodge — via `/dodge-request` with
   a screenshot attachment, or the channel's **Request Dodge** button (which, since Discord buttons can't accept
   file uploads, asks you to post the screenshot as a message in the channel first, then click **Submit Dodge
   Request**). It posts to `#league-managers` with Approve/Deny buttons (gated to the `League Manager` role).

@@ -48,6 +48,7 @@ export async function createMatch(challenger: LadderRow, defender: LadderRow): P
     resolvedAt: "",
     channelId: "",
     extensionPending: false,
+    cancelRequestedByUserId: "",
   };
   await matchesRepo.addMatch(match);
 

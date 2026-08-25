@@ -8,7 +8,7 @@ import type { Command } from "../commandTypes.js";
 export const dodgeCommand: Command = {
   data: new SlashCommandBuilder()
     .setName("dodge-request")
-    .setDescription("Request a dodge because your opponent hasn't responded in 48+ hours")
+    .setDescription("Request a dodge because your opponent hasn't responded in 24+ hours")
     .addStringOption((opt) =>
       opt.setName("match").setDescription("Which match are you requesting a dodge for?").setRequired(true).setAutocomplete(true),
     )

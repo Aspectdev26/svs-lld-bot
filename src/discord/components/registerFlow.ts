@@ -223,7 +223,7 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
     )
     .setColor(0xf1c40f);
 
-  await notify.announcements(interaction.client, {
+  await notify.challenges(interaction.client, {
     content: `<@${entry.discordUserId}>`,
     embeds: [embed],
   });
@@ -234,7 +234,7 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
       content: `🎉 You've been approved! **${entry.characterName}** (${formatElement(entry.element)}, ${entry.build}) is now on the ladder at rank ${entry.rank}.`,
     });
   } catch {
-    // DMs closed — the public #announcements post above already covers it.
+    // DMs closed — the public results-channel post above already covers it.
   }
 
   if (entry.rank <= 10) {

@@ -40,7 +40,7 @@ const STATUS_COLORS: Record<string, { bg: Color; text: Color }> = {
   Vacation: { bg: { red: 1, green: 0.851, blue: 0.4 }, text: { red: 0.498, green: 0.376, blue: 0 } }, // #ffd966 / #7f6000
 };
 
-/** Subtle badge tint for the Rank cell itself (not the whole row) on ranks 1-3. */
+/** Gold/silver/bronze badge tint for the Rank cell itself (not the whole row) on ranks 1-3 — the only medal treatment, safe because conditional formatting never changes the cell's readable value. */
 const RANK_BADGE_COLORS: Record<number, Color> = {
   1: { red: 0.945, green: 0.761, blue: 0.196 }, // gold
   2: { red: 0.827, green: 0.827, blue: 0.827 }, // silver
@@ -154,10 +154,12 @@ export async function applyLadderFormatting(): Promise<void> {
     },
   });
 
-  // Rank column: bold, right-aligned numbers. A custom number format prefixes 🥇/🥈 for ranks 1-2 —
-  // a Sheets number format only allows two bracketed conditions, so rank 3 gets its bronze badge
-  // via the conditional fill below instead. Display-only: the underlying numeric value (and every
-  // parseInt() read elsewhere) is completely unaffected.
+  // Rank column: bold, right-aligned numbers. Deliberately no custom number format here — an
+  // earlier version prefixed 🥇/🥈 onto ranks 1-2 via a number format, which silently changes what
+  // the Sheets API returns for those cells (the bot reads FORMATTED values), broke parseInt() on
+  // the rank, and corrupted `nextRankForNewEntry` for every signup approved afterward — poisoning
+  // the ladder with a blank rank. Ranks 1-3 get their medal purely via the conditional background
+  // tint below, which never touches the readable value.
   requests.push({
     repeatCell: {
       range: gridRange(sheetId, COL.rank, COL.rank + 1, 1),
@@ -165,9 +167,12 @@ export async function applyLadderFormatting(): Promise<void> {
         userEnteredFormat: {
           horizontalAlignment: "RIGHT",
           textFormat: textFormat(BLACK, true, BODY_FONT_SIZE),
-          numberFormat: { type: "NUMBER", pattern: '[=1]"🥇 "0;[=2]"🥈 "0;0' },
+          numberFormat: { type: "NUMBER", pattern: "0" },
         },
       },
+      // numberFormat is explicitly included (and reset to plain "0") even though this tab no
+      // longer sets a custom one — omitting it from the mask leaves any format from a previous
+      // run in place instead of clearing it, which is exactly what broke rank parsing before.
       fields: "userEnteredFormat(horizontalAlignment,textFormat,numberFormat)",
     },
   });

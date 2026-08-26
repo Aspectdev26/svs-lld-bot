@@ -22,8 +22,8 @@ export async function refreshActiveChallengesPanel(client: Client): Promise<void
   const textChannel = channel as TextChannel;
 
   const [pending, ladder] = await Promise.all([matchesRepo.getPendingMatches(), ladderRepo.getLadder()]);
-  const nameFor = (userId: string, element: Element) =>
-    ladder.find((r) => r.discordUserId === userId && r.element === element)?.characterName ?? "Unknown";
+  const entryFor = (userId: string, element: Element) =>
+    ladder.find((r) => r.discordUserId === userId && r.element === element);
 
   const sorted = [...pending].sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt));
 
@@ -32,10 +32,13 @@ export async function refreshActiveChallengesPanel(client: Client): Promise<void
       ? "No active challenges right now."
       : sorted
           .map((m) => {
+            const challenger = entryFor(m.challengerUserId, m.challengerElement);
+            const defender = entryFor(m.defenderUserId, m.defenderElement);
             const expiresUnix = Math.floor(Date.parse(m.expiresAt) / 1000);
+            const crownTag = defender?.rank === 1 ? "👑 **Crown Match** — " : "";
             return (
-              `**${nameFor(m.challengerUserId, m.challengerElement)}** (${formatElement(m.challengerElement)}) vs ` +
-              `**${nameFor(m.defenderUserId, m.defenderElement)}** (${formatElement(m.defenderElement)}) — ` +
+              `${crownTag}**${challenger?.characterName ?? "Unknown"}** (${formatElement(m.challengerElement)}, rank ${challenger?.rank ?? "?"}) vs ` +
+              `**${defender?.characterName ?? "Unknown"}** (${formatElement(m.defenderElement)}, rank ${defender?.rank ?? "?"}) — ` +
               `expires <t:${expiresUnix}:R> — \`${m.matchId}\``
             );
           })

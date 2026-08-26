@@ -7,7 +7,7 @@ export interface ChallengeRuleConfig {
   topTierChallengeRange: number;
 }
 
-interface EligibleTarget {
+export interface EligibleTarget {
   row: LadderRow;
   /** 1-indexed position among the challenger's own-element-skipped reachable rows (closest = 1). */
   step: number;
@@ -38,6 +38,11 @@ export function getEligibleTargets(
     results.push({ row, step });
   }
   return results;
+}
+
+/** Whether `target` (from {@link getEligibleTargets}) is actually within reach given the top-tier sub-rule. */
+export function isTargetReachable(target: EligibleTarget, rules: ChallengeRuleConfig): boolean {
+  return !(target.row.rank <= rules.topTierSize && target.step > rules.topTierChallengeRange);
 }
 
 export interface ChallengeCheckParams {
@@ -87,7 +92,7 @@ export function checkChallenge(params: ChallengeCheckParams): string | null {
   if (!match) {
     return `that's more than ${rules.challengeRange} ranks above you.`;
   }
-  if (defender.rank <= rules.topTierSize && match.step > rules.topTierChallengeRange) {
+  if (!isTargetReachable(match, rules)) {
     return `${defender.characterName} is ranked in the top ${rules.topTierSize} — only players within ${rules.topTierChallengeRange} ranks of them may challenge.`;
   }
 

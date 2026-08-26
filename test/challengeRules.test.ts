@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkChallenge, getEligibleTargets } from "../src/domain/challengeRules.js";
+import { checkChallenge, getEligibleTargets, isTargetReachable } from "../src/domain/challengeRules.js";
 import type { LadderRow } from "../src/types.js";
 
 const rules = { challengeRange: 3, topTierSize: 10, topTierChallengeRange: 2 };
@@ -19,6 +19,7 @@ function row(rank: number, userId: string, overrides: Partial<LadderRow> = {}): 
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
+    dodgeCount: 0,
     ...overrides,
   };
 }
@@ -228,5 +229,42 @@ describe("getEligibleTargets - skip-self counting", () => {
     // Rank 3 is on Vacation: skipped, doesn't consume a step, and range still reaches ranks 4, 2, 1.
     expect(ranks).not.toContain(3);
     expect(ranks).toEqual([4, 2, 1]);
+  });
+});
+
+describe("isTargetReachable - top-tier display filtering", () => {
+  it("marks a top-tier target beyond topTierChallengeRange as unreachable, matching checkChallenge's rejection", () => {
+    const ladder = buildLadder(15);
+    const challenger = ladder.find((r) => r.rank === 13)!;
+    const eligible = getEligibleTargets(ladder, challenger, rules);
+    const rank10Target = eligible.find((e) => e.row.rank === 10)!;
+
+    expect(isTargetReachable(rank10Target, rules)).toBe(false);
+    // The reachable subset (what a target-select menu should show) must exclude it.
+    expect(eligible.filter((e) => isTargetReachable(e, rules)).map((e) => e.row.rank)).not.toContain(10);
+
+    // And checkChallenge independently rejects the same target for the same reason.
+    const result = checkChallenge({
+      ladder,
+      challenger,
+      defender: ladder.find((r) => r.rank === 10)!,
+      challengerEntryHasPendingMatch: false,
+      defenderEntryHasPendingMatch: false,
+      rules,
+    });
+    expect(result).toMatch(/top 10/);
+  });
+
+  it("marks in-range, non-top-tier targets as reachable", () => {
+    const ladder = buildLadder(15);
+    // Challenger is well below the top tier (topTierSize: 10), so none of ranks 13/12/11 are
+    // top-tier — the tighter topTierChallengeRange never applies to them.
+    const challenger = ladder.find((r) => r.rank === 14)!;
+    const eligible = getEligibleTargets(ladder, challenger, rules);
+
+    expect(eligible.map((e) => e.row.rank)).toEqual([13, 12, 11]);
+    for (const target of eligible) {
+      expect(isTargetReachable(target, rules)).toBe(true);
+    }
   });
 });

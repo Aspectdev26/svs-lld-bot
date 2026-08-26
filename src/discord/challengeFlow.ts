@@ -1,7 +1,7 @@
 import { ActionRowBuilder, EmbedBuilder, StringSelectMenuBuilder, type RepliableInteraction } from "discord.js";
 import { config } from "../config.js";
 import * as matchService from "../domain/matchService.js";
-import { checkChallenge, getEligibleTargets } from "../domain/challengeRules.js";
+import { checkChallenge, getEligibleTargets, isTargetReachable } from "../domain/challengeRules.js";
 import { isLadderPaused } from "../domain/ladderPauseService.js";
 import { createMatchChannel } from "./matchChannels.js";
 import { notify } from "./notify.js";
@@ -19,7 +19,9 @@ export type TargetSelectResult =
 
 /** Builds the "who do you want to challenge" select menu for one of the player's elements. */
 export function buildTargetSelectRow(ladder: LadderRow[], challengerEntry: LadderRow): TargetSelectResult {
-  const eligible = getEligibleTargets(ladder, challengerEntry, config.rules);
+  const eligible = getEligibleTargets(ladder, challengerEntry, config.rules).filter((e) =>
+    isTargetReachable(e, config.rules),
+  );
   if (eligible.length === 0) {
     return {
       ok: false,

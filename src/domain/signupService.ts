@@ -95,6 +95,8 @@ export async function approveSignup(request: SignupRequestRow, resolvedByUserId:
     notes: "",
     dodgeWins: 0,
     dodgeCount: 0,
+    vacationSince: "",
+    vacationWarningSentAt: "",
   };
   await ladderRepo.addLadderEntry(newEntry);
 

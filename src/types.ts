@@ -38,6 +38,10 @@ export interface LadderRow {
    * (win or loss) decrements this by 1, down to a floor of 0 — see matchService.reportWin.
    */
   dodgeCount: number;
+  /** ISO timestamp of when this entry's status last became "Vacation"; blank otherwise. Drives the 14-day auto-escalation to Extended Vacation. */
+  vacationSince: string;
+  /** ISO timestamp the 3-day-before-expiry Vacation warning was sent; blank if not sent yet (or not currently on Vacation). */
+  vacationWarningSentAt: string;
 }
 
 export const MATCH_STATUSES = [
@@ -166,4 +170,48 @@ export interface BanRow {
   reason: string;
   bannedAt: string;
   bannedByUserId: string;
+}
+
+export const VACATION_REQUEST_TYPES = ["Vacation", "ExtendedVacation"] as const;
+export type VacationRequestType = (typeof VACATION_REQUEST_TYPES)[number];
+
+/** A pending (or resolved) self-service Vacation/Extended Vacation request awaiting League Manager approval. */
+export interface VacationRequestRow {
+  sheetRow: number;
+  requestId: string;
+  discordUserId: string;
+  discordName: string;
+  characterName: string;
+  element: Element;
+  build: Build;
+  requestType: VacationRequestType;
+  status: SignupStatus;
+  requestedAt: string;
+  resolvedByUserId: string;
+  resolvedAt: string;
+  denyReason: string;
+  leagueManagerMessageUrl: string;
+}
+
+export const EXTENDED_VACATION_SOURCES = ["Requested", "AutoEscalated"] as const;
+export type ExtendedVacationSource = (typeof EXTENDED_VACATION_SOURCES)[number];
+
+/** One row per (user, element) currently on Extended Vacation — the entry is off the ladder entirely while this row exists. */
+export interface ExtendedVacationRow {
+  sheetRow: number;
+  discordUserId: string;
+  discordName: string;
+  characterName: string;
+  element: Element;
+  build: Build;
+  /** The rank this entry held at the moment it entered Extended Vacation — used to reinsert one rank behind it on return. */
+  rankAtEntry: number;
+  enteredAt: string;
+  /** enteredAt + 30 days, stored explicitly so the watcher doesn't need to recompute it. */
+  expiresAt: string;
+  source: ExtendedVacationSource;
+  /** League Manager who approved the request; blank if auto-escalated from an expired Vacation. */
+  approvedByUserId: string;
+  /** ISO timestamp the 3-day-before-expiry warning was sent; blank if not sent yet. */
+  warningSentAt: string;
 }

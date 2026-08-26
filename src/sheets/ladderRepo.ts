@@ -24,11 +24,27 @@ export const LADDER_HEADERS = [
   "Notes",
   "Dodges",
   "DodgesAgainst",
+  "VacationSince",
+  "VacationWarningSentAt",
 ];
 
 function rowFromValues(sheetRow: number, values: string[]): LadderRow {
-  const [rank, characterName, build, element, discordName, status, challengeDate, opponentRank, discordUserId, notes, dodgeWins, dodgeCount] =
-    values;
+  const [
+    rank,
+    characterName,
+    build,
+    element,
+    discordName,
+    status,
+    challengeDate,
+    opponentRank,
+    discordUserId,
+    notes,
+    dodgeWins,
+    dodgeCount,
+    vacationSince,
+    vacationWarningSentAt,
+  ] = values;
   return {
     sheetRow,
     rank: Number.parseInt(rank, 10),
@@ -43,6 +59,8 @@ function rowFromValues(sheetRow: number, values: string[]): LadderRow {
     notes: notes ?? "",
     dodgeWins: Number.parseInt(dodgeWins, 10) || 0,
     dodgeCount: Number.parseInt(dodgeCount, 10) || 0,
+    vacationSince: vacationSince ?? "",
+    vacationWarningSentAt: vacationWarningSentAt ?? "",
     joinedAt: "", // not shown in this layout; retained on the type for internal bookkeeping only
   };
 }
@@ -61,12 +79,14 @@ function toValues(entry: Omit<LadderRow, "sheetRow">): (string | number)[] {
     entry.notes,
     entry.dodgeWins,
     entry.dodgeCount,
+    entry.vacationSince,
+    entry.vacationWarningSentAt,
   ];
 }
 
 /** All ladder rows, ordered by their current rank ascending (rank 1 = top). */
 export async function getLadder(): Promise<LadderRow[]> {
-  const values = await readSheetRange(`${LADDER_SHEET}!A2:L`);
+  const values = await readSheetRange(`${LADDER_SHEET}!A2:N`);
   const rows = values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is LadderRow => r !== null);
@@ -107,6 +127,16 @@ export async function setRank(sheetRow: number, rank: number): Promise<void> {
 /** Sets Vacation/Available on one specific ladder entry (one character/element), not a player's whole roster. */
 export async function setStatusForEntry(sheetRow: number, status: PlayerStatus): Promise<void> {
   await updateSheetCell(LADDER_SHEET, sheetRow, "F", status);
+}
+
+/** ISO timestamp of when this entry's status became "Vacation" — drives the 14-day auto-escalation watcher. Pass "" to clear. */
+export async function setVacationSince(sheetRow: number, iso: string): Promise<void> {
+  await updateSheetCell(LADDER_SHEET, sheetRow, "M", iso);
+}
+
+/** "Already warned about upcoming Vacation expiry" flag — see vacationWatcher.ts. Pass "" to clear. */
+export async function setVacationWarningSentAt(sheetRow: number, iso: string): Promise<void> {
+  await updateSheetCell(LADDER_SHEET, sheetRow, "N", iso);
 }
 
 /** Marks an entry as actively challenging: Status="Challenge" plus the opponent's rank and a display timestamp. */

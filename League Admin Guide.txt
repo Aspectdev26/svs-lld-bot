@@ -1,5 +1,5 @@
 SVS LEAGUE LADDER — ADMIN & MODERATOR GUIDE
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 This document explains how the ladder league bot works end to end, and lists every
 function League Managers have access to. Share it with anyone who moderates or
@@ -11,8 +11,9 @@ OVERVIEW
 ===============================================================================
 The league is a competitive ladder across three elements (Cold, Light, Fire) and two
 builds (Vita, ES). A player can hold up to 3 entries on the ladder at once — one per
-element. Everything meaningful (sign-ups, dodges, extensions) is admin-reviewed; there
-are no self-service commands that bypass League Manager approval.
+element. Sign-ups, dodges, extensions, and *starting* a Vacation or Extended Vacation
+are all admin-reviewed. A few things ARE self-service with no approval needed: Leaving
+the ladder, returning from Vacation, and returning from Extended Vacation.
 
 All league data lives in a Google Sheet, which the bot reads/writes automatically.
 League Managers generally never need to touch the sheet directly — everything is done
@@ -23,8 +24,10 @@ something up by hand.
 ===============================================================================
 CHANNELS
 ===============================================================================
-#register          Sign Up button and Leave Ladder button live here. Sign-up requests
-                    get sent from here to #league-managers for approval.
+#register          Sign Up, Leave Ladder, Request/Return from Vacation, and
+                    Request/Return from Extended Vacation buttons all live here.
+                    Sign-up and Vacation/Extended Vacation requests get sent from here
+                    to #league-managers for approval.
 
 #challenges         ("Issue a Challenge") Holds two pinned, always-current posts: the
                     Challenge button, and the Active Challenges list (every currently
@@ -42,7 +45,8 @@ Results channel     A permanent, never-deleted log of every challenge issued, ma
                     every pending approval request: sign-ups, dodge requests, and
                     extension requests, each with Approve/Deny buttons.
 
-#announcements      New player sign-up announcements are posted here.
+#announcements      New player sign-up announcements are posted here, along with a
+                    player leaving the ladder and Extended Vacation entries/returns.
 
 
 ===============================================================================
@@ -95,9 +99,43 @@ WHAT PLAYERS CAN DO
      removed and the gap closes.
    - Not reversible — they'd need to sign up again and be re-approved to rejoin.
 
-7. VACATION STATUS
-   - Players CANNOT set this themselves. League Manager only — see below.
-   - While on Vacation, a player can't be challenged and can't issue challenges.
+7. VACATION STATUS (overview)
+   - "Request Vacation" and "Request Extended Vacation" (items 8-9 below) both require
+     League Manager approval — see below. Returning from either is self-service.
+   - While on Vacation or Extended Vacation, a player can't be challenged and can't
+     issue challenges. Extended Vacation additionally removes the entry from the
+     ladder entirely until they return.
+   - The League Manager dashboard's own Vacation toggle (see LEAGUE MANAGER DASHBOARD
+     below) still exists as a manual override.
+
+8. REQUEST / RETURN FROM VACATION
+   - "Request Vacation" in #register — warns that an active match should be finished
+     first if possible, since approving the request while a match is still pending
+     auto-forfeits it (the opponent is credited the win) AND counts as a dodge against
+     the requester, including toward the normal 2-warning/3-removal dodge thresholds.
+   - Goes to #league-managers for Approve/Deny, same as a sign-up request.
+   - Approved Vacation lasts up to 14 days. A DM warning goes out 3 days before it
+     expires; miss the full 14 days and the entry auto-escalates to Extended Vacation
+     with no League Manager involved.
+   - "Return from Vacation" in #register is fully self-service (no approval) at any
+     point before the 14 days are up — puts the entry straight back to Available.
+
+9. REQUEST / RETURN FROM EXTENDED VACATION
+   - "Request Extended Vacation" in #register works from Available OR regular
+     Vacation. Same pending-match forfeit/dodge-count rule as Vacation above.
+   - Goes to #league-managers for Approve/Deny. Once approved, the entry is removed
+     from the ladder entirely (same as Remove Player) and logged to the
+     ExtendedVacation tab along with the rank it held.
+   - Lasts up to 30 days from whenever it started (the approval, or an auto-escalation
+     from an unreturned Vacation). A DM warning goes out 3 days before it expires.
+   - "Return from Extended Vacation" in #register is fully self-service (no approval):
+     the player rejoins the ladder at their OLD RANK + 1, and the bot automatically
+     issues a challenge against whoever currently holds their old rank (skipped if
+     that player already has an active match — the returner just settles at the new
+     rank as a normal Available entry in that case).
+   - Miss the full 30 days and the entry is fully removed — same as a League Manager
+     removal — and the player's season activity-points total is also reset to zero.
+     They'd need to sign up again from scratch to rejoin.
 
 
 ===============================================================================
@@ -171,9 +209,10 @@ so the whole server can see what changed and who did it.
 10. VACATION
    - Pick one character (by character name) to toggle their status between Vacation
      and Available.
-   - This is the ONLY way to set Vacation — there's no self-service option, so a
-     player can never dodge a challenge or make themselves un-challengeable on their
-     own.
+   - This is a manual override that exists alongside the self-service Request
+     Vacation/Extended Vacation flow in #register (see items 8-9 above). Unlike the
+     self-service flow, this toggle BLOCKS instead of auto-forfeiting if the entry
+     has an active match — you'll need to resolve or cancel it first.
 
 
 ===============================================================================
@@ -194,6 +233,12 @@ HOW STATS ARE TRACKED
 - LADDER tab: the live source of truth for current ranks, character info, and whether
   someone's mid-challenge or on Vacation. League Managers can write freely into the
   Notes column — the bot never touches it.
+- VACATIONREQUESTS tab: the approval queue for both self-service Vacation and
+  Extended Vacation requests (Pending/Approved/Denied), same shape as sign-up
+  requests.
+- EXTENDEDVACATION tab: every entry currently on Extended Vacation, with the rank it
+  held when it left the ladder and when its 30-day window expires. A row disappears
+  once that player returns or is fully removed.
 
 
 ===============================================================================

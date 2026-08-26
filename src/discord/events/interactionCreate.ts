@@ -4,7 +4,48 @@ import { handleDodgeButton, DENY_MODAL_PREFIX } from "../components/dodgeButtons
 import { handleDodgeDenyModal } from "../components/dodgeDenyModal.js";
 import { handleMatchChannelButton } from "../components/matchChannelButtons.js";
 import { handleExtensionButton } from "../components/extensionButtons.js";
-import { REGISTER_START_BUTTON_ID, LEAVE_LADDER_BUTTON_ID } from "../registerPanel.js";
+import {
+  REGISTER_START_BUTTON_ID,
+  LEAVE_LADDER_BUTTON_ID,
+  VACATION_REQUEST_START_BUTTON_ID,
+  VACATION_RETURN_BUTTON_ID,
+  EXTENDED_VACATION_REQUEST_START_BUTTON_ID,
+  EXTENDED_VACATION_RETURN_BUTTON_ID,
+} from "../registerPanel.js";
+import {
+  handleVacationRequestStartButton,
+  handleVacationRequestElementSelect,
+  handleVacationRequestSubmitResolve,
+  handleVacationRequestApproveDenyButton,
+  handleVacationRequestDenyModal,
+  handleExtendedVacationRequestStartButton,
+  handleExtendedVacationRequestElementSelect,
+  handleExtendedVacationRequestSubmitResolve,
+  handleExtendedVacationRequestApproveDenyButton,
+  handleExtendedVacationRequestDenyModal,
+  handleVacationReturnStartButton,
+  handleVacationReturnElementSelect,
+  handleVacationReturnResolve,
+  handleExtendedVacationReturnStartButton,
+  handleExtendedVacationReturnElementSelect,
+  handleExtendedVacationReturnResolve,
+  VACATION_REQUEST_ELEMENT_SELECT_ID,
+  VACATION_REQUEST_SUBMIT_PREFIX,
+  VACATION_REQUEST_SUBMIT_CANCEL_ID,
+  VACATION_REQUEST_APPROVE_DENY_PREFIXES,
+  VACATION_REQUEST_DENY_MODAL_PREFIX,
+  EXTENDED_VACATION_REQUEST_ELEMENT_SELECT_ID,
+  EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX,
+  EXTENDED_VACATION_REQUEST_SUBMIT_CANCEL_ID,
+  EXTENDED_VACATION_REQUEST_APPROVE_DENY_PREFIXES,
+  EXTENDED_VACATION_REQUEST_DENY_MODAL_PREFIX,
+  VACATION_RETURN_ELEMENT_SELECT_ID,
+  VACATION_RETURN_CONFIRM_PREFIX,
+  VACATION_RETURN_CANCEL_ID,
+  EXTENDED_VACATION_RETURN_ELEMENT_SELECT_ID,
+  EXTENDED_VACATION_RETURN_CONFIRM_PREFIX,
+  EXTENDED_VACATION_RETURN_CANCEL_ID,
+} from "../components/vacationFlow.js";
 import {
   handleLeaveLadderStartButton,
   handleLeaveLadderElementSelect,
@@ -96,6 +137,12 @@ const ADMIN_SETRANK_ELEMENT_SELECT_PREFIX = "admin_setrank_element:";
 const ADMIN_SETRANK_MODAL_PREFIX = "admin_setrank_modal:";
 const WINNER_SELECT_PREFIX_WITH_COLON = `${WINNER_SELECT_PREFIX}:`;
 const LEAVE_RESOLVE_PREFIXES = [`${LEAVE_CONFIRM_PREFIX}:`, LEAVE_CANCEL_ID];
+const VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON = `${VACATION_REQUEST_SUBMIT_PREFIX}:`;
+const EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON = `${EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX}:`;
+const VACATION_RETURN_RESOLVE_PREFIXES = [`${VACATION_RETURN_CONFIRM_PREFIX}:`, VACATION_RETURN_CANCEL_ID];
+const EXTENDED_VACATION_RETURN_RESOLVE_PREFIXES = [`${EXTENDED_VACATION_RETURN_CONFIRM_PREFIX}:`, EXTENDED_VACATION_RETURN_CANCEL_ID];
+const VACATION_REQUEST_DENY_MODAL_PREFIX_WITH_COLON = `${VACATION_REQUEST_DENY_MODAL_PREFIX}:`;
+const EXTENDED_VACATION_REQUEST_DENY_MODAL_PREFIX_WITH_COLON = `${EXTENDED_VACATION_REQUEST_DENY_MODAL_PREFIX}:`;
 
 export function registerInteractionEvent(client: Client): void {
   client.on("interactionCreate", async (interaction) => {
@@ -150,6 +197,14 @@ export function registerInteractionEvent(client: Client): void {
           await handleWinnerSelect(interaction);
         } else if (interaction.customId === LEAVE_ELEMENT_SELECT_ID) {
           await handleLeaveLadderElementSelect(interaction);
+        } else if (interaction.customId === VACATION_REQUEST_ELEMENT_SELECT_ID) {
+          await handleVacationRequestElementSelect(interaction);
+        } else if (interaction.customId === EXTENDED_VACATION_REQUEST_ELEMENT_SELECT_ID) {
+          await handleExtendedVacationRequestElementSelect(interaction);
+        } else if (interaction.customId === VACATION_RETURN_ELEMENT_SELECT_ID) {
+          await handleVacationReturnElementSelect(interaction);
+        } else if (interaction.customId === EXTENDED_VACATION_RETURN_ELEMENT_SELECT_ID) {
+          await handleExtendedVacationReturnElementSelect(interaction);
         }
         return;
       }
@@ -161,6 +216,32 @@ export function registerInteractionEvent(client: Client): void {
           await handleLeaveLadderStartButton(interaction);
         } else if (LEAVE_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
           await handleLeaveLadderResolve(interaction);
+        } else if (interaction.customId === VACATION_REQUEST_START_BUTTON_ID) {
+          await handleVacationRequestStartButton(interaction);
+        } else if (interaction.customId === VACATION_RETURN_BUTTON_ID) {
+          await handleVacationReturnStartButton(interaction);
+        } else if (interaction.customId === EXTENDED_VACATION_REQUEST_START_BUTTON_ID) {
+          await handleExtendedVacationRequestStartButton(interaction);
+        } else if (interaction.customId === EXTENDED_VACATION_RETURN_BUTTON_ID) {
+          await handleExtendedVacationReturnStartButton(interaction);
+        } else if (
+          interaction.customId === VACATION_REQUEST_SUBMIT_CANCEL_ID ||
+          interaction.customId.startsWith(VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON)
+        ) {
+          await handleVacationRequestSubmitResolve(interaction);
+        } else if (
+          interaction.customId === EXTENDED_VACATION_REQUEST_SUBMIT_CANCEL_ID ||
+          interaction.customId.startsWith(EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON)
+        ) {
+          await handleExtendedVacationRequestSubmitResolve(interaction);
+        } else if (VACATION_RETURN_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+          await handleVacationReturnResolve(interaction);
+        } else if (EXTENDED_VACATION_RETURN_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+          await handleExtendedVacationReturnResolve(interaction);
+        } else if (VACATION_REQUEST_APPROVE_DENY_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+          await handleVacationRequestApproveDenyButton(interaction);
+        } else if (EXTENDED_VACATION_REQUEST_APPROVE_DENY_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+          await handleExtendedVacationRequestApproveDenyButton(interaction);
         } else if (interaction.customId === CHALLENGE_START_BUTTON_ID) {
           await handleChallengeStartButton(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.shuffle) {
@@ -224,6 +305,10 @@ export function registerInteractionEvent(client: Client): void {
           await handleSetRankModal(interaction);
         } else if (interaction.customId === SEASON_NAME_MODAL_ID) {
           await handleShuffleNameModal(interaction);
+        } else if (interaction.customId.startsWith(VACATION_REQUEST_DENY_MODAL_PREFIX_WITH_COLON)) {
+          await handleVacationRequestDenyModal(interaction);
+        } else if (interaction.customId.startsWith(EXTENDED_VACATION_REQUEST_DENY_MODAL_PREFIX_WITH_COLON)) {
+          await handleExtendedVacationRequestDenyModal(interaction);
         }
         return;
       }

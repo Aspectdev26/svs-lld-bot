@@ -3,6 +3,7 @@ import { createClient } from "./discord/client.js";
 import { registerReadyEvent } from "./discord/events/ready.js";
 import { registerInteractionEvent } from "./discord/events/interactionCreate.js";
 import { startMatchWatcher } from "./scheduler/matchWatcher.js";
+import { startVacationWatcher } from "./scheduler/vacationWatcher.js";
 import { ensureRegisterPanel } from "./discord/registerPanel.js";
 import { ensureChallengePanel } from "./discord/challengePanel.js";
 import { ensureAdminPanel } from "./discord/adminPanel.js";
@@ -16,6 +17,8 @@ import { RANK1_SHEET, RANK1_HEADERS } from "./sheets/rank1Repo.js";
 import { SEASON_STATS_SHEET, SEASON_STATS_HEADERS } from "./sheets/seasonStatsRepo.js";
 import { SIGNUP_REQUESTS_SHEET, SIGNUP_REQUESTS_HEADERS } from "./sheets/signupRequestsRepo.js";
 import { BANNED_SHEET, BANNED_HEADERS } from "./sheets/bannedRepo.js";
+import { VACATION_REQUESTS_SHEET, VACATION_REQUESTS_HEADERS } from "./sheets/vacationRequestsRepo.js";
+import { EXTENDED_VACATION_SHEET, EXTENDED_VACATION_HEADERS } from "./sheets/extendedVacationRepo.js";
 import { SETTINGS_SHEET, SETTINGS_HEADERS, getSettings } from "./sheets/settingsRepo.js";
 import { applyLadderFormatting } from "./sheets/ladderFormatting.js";
 import { applyStandardTabFormatting } from "./sheets/sheetFormatting.js";
@@ -28,6 +31,8 @@ const NON_LADDER_TABS = [
   { name: SIGNUP_REQUESTS_SHEET, headers: SIGNUP_REQUESTS_HEADERS },
   { name: BANNED_SHEET, headers: BANNED_HEADERS },
   { name: SETTINGS_SHEET, headers: SETTINGS_HEADERS },
+  { name: VACATION_REQUESTS_SHEET, headers: VACATION_REQUESTS_HEADERS },
+  { name: EXTENDED_VACATION_SHEET, headers: EXTENDED_VACATION_HEADERS },
 ];
 
 async function main() {
@@ -53,6 +58,7 @@ async function main() {
 
   client.once("clientReady", () => {
     startMatchWatcher(client);
+    startVacationWatcher(client);
     ensureRegisterPanel(client).catch((err) => console.error("Failed to post register panel:", err));
     ensureChallengePanel(client).catch((err) => console.error("Failed to post challenge panel:", err));
     ensureAdminPanel(client).catch((err) => console.error("Failed to post admin panel:", err));

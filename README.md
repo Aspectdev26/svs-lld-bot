@@ -19,6 +19,23 @@ requests with screenshot evidence.
   match, leaving reports the match as **a loss for you** (your opponent is credited the win, including any rank
   swap) before the entry is removed, exactly like a normal reported result. Leaving isn't reversible — you'd need
   to sign up (and be re-approved) to rejoin.
+- **Vacation (self-service)**: `#register` has **Request Vacation** and **Return from Vacation** buttons. Requesting
+  needs League Manager Approve/Deny (same review pattern as sign-ups, posted to `#league-managers`); if the entry
+  still has a pending match when it's approved, that match is auto-forfeited (your opponent is credited the win,
+  same as Leave Ladder) and it counts as a dodge against you — including toward the same 2-warning/3-removal
+  thresholds as a normal dodge. Approved Vacation lasts up to **14 days**; **Return from Vacation** is fully
+  self-service (no approval) any time before then, and puts the entry straight back to Available/challengeable. Miss
+  the 14 days and it auto-escalates to Extended Vacation with no League Manager involved — you'll get a DM warning
+  3 days before that happens either way.
+- **Extended Vacation (self-service)**: **Request Extended Vacation** works from Available or regular Vacation, also
+  needs League Manager approval (same pending-match forfeit/dodge rule as above), and — once approved — removes the
+  entry from the ladder entirely into a dedicated `ExtendedVacation` sheet tab, recording the rank it held. It lasts
+  up to **30 days** from whenever it started (either the approval, or an auto-escalation from an unreturned regular
+  Vacation) — again with a DM warning 3 days out. **Return from Extended Vacation** is self-service: you rejoin the
+  ladder at **your old rank + 1**, and the bot automatically issues a challenge against whoever now holds your old
+  rank (skipped if they're already mid-match, in which case you just settle in at the new rank as normal). Miss the
+  30 days and the entry is fully removed — same as a League Manager removal, plus your season (activity) points are
+  reset to zero — and you'd need to sign up again from scratch to rejoin.
 - **Character names are unique per element+build**: you can't sign up with a name someone else already has on the
   ladder (or already has pending review) for that exact element+build combo (case-insensitive) — pick a different
   name instead. The one exception: you can reclaim your *own* former name/element/build combo (e.g. after being
@@ -97,8 +114,11 @@ requests with screenshot evidence.
   shown as the default, so both sides always require an explicit pick) rather than assuming the reporter always
   won — so a player can self-report, or just as easily report their opponent's win (concede) or correct a mistake.
   If the challenger is picked as the winner, ranks swap; if the defender wins, nothing changes.
-- **Vacation**: admin-only, via the League Manager dashboard's **Vacation** button — pick one character (by name,
-  not Discord name) to toggle just that entry's status, leaving the player's other elements untouched.
+- **Vacation**: self-service via `#register`'s **Request Vacation**/**Return from Vacation** and **Request Extended
+  Vacation**/**Return from Extended Vacation** buttons — see the dedicated section below. The League Manager
+  dashboard's **Vacation** button still exists as a manual admin override: pick one character (by name, not Discord
+  name) to toggle just that entry's status, leaving the player's other elements untouched. Unlike the self-service
+  request flow, the admin toggle *blocks* instead of auto-forfeiting when the entry has a pending match.
 - **Dodges**: once 24h pass on a match with no result, either side can request a dodge — via `/dodge-request` with
   a screenshot attachment, or the channel's **Request Dodge** button (which, since Discord buttons can't accept
   file uploads, asks you to post the screenshot as a message in the channel first, then click **Submit Dodge
@@ -147,9 +167,9 @@ requests with screenshot evidence.
     there, even if its original auto-post to this channel never showed up (e.g. a slow response caused the bot to
     save the request but fail to post it — this is the recovery path for that).
   - **Vacation** — pick one character directly from the same by-name dropdown as Remove Player, to toggle just
-    that entry between Available and Vacation. This is the *only* way to set Vacation — there's no self-service
-    command, so a player can't accidentally make themselves un-challengeable (or dodge a challenge) without a
-    League Manager's say-so.
+    that entry between Available and Vacation. This is a manual override alongside the self-service Vacation
+    request flow in `#register` (see below) — the dashboard toggle *blocks* instead of auto-forfeiting if the
+    entry has a pending match.
   - **Shuffle Ranks** — randomizes rank order only, with no season archiving or match cancellation (unlike Reset
     Ladder). Warns first if there are currently active challenges, since shuffling ranks mid-challenge can make the
     challenge context (who challenged whom, at what rank) confusing. Requires a confirmation click.
@@ -320,3 +340,19 @@ league. To speed up expiry/warning testing, temporarily lower `MATCH_LIFESPAN_MS
     Separately, confirm `#challenges` only ever shows the two pinned panels (**Challenge** button and **Active
     Challenges**), both edited in place rather than reposted, and that the Active Challenges list always matches
     the `Matches` tab's currently-`Pending` rows.
+15. Self-service Vacation — **Request Vacation** in `#register` with a test account, confirm the request lands in
+    `#league-managers`; **Approve** should flip the entry to `Vacation` in `Ladder` and set `VacationSince`.
+    **Return from Vacation** should flip it straight back to `Available` with no approval step. Then repeat the
+    request while the entry has an active match: on **Approve**, confirm the match auto-resolves as a loss for the
+    requester (opponent gets the rank swap, same as **Leave Ladder**) and the requester's `DodgesAgainst` increments
+    by 1 — get them to 2 and 3 across a couple of these to confirm the normal dodge warning/removal DMs and
+    `#league-managers` notices still fire correctly off a vacation-caused forfeit. Lower `VACATION_EXPIRY_MS` and
+    `VACATION_WARNING_LEAD_MS` in `.env` to confirm the warning DM/notice fires 3 days out and the entry
+    auto-escalates into `ExtendedVacation` (with the right `RankAtEntry`) once it fully expires.
+16. Self-service Extended Vacation — **Request Extended Vacation**, **Approve** it, and confirm the entry disappears
+    from `Ladder` (ranks below it compact) and a row appears in `ExtendedVacation`. **Return from Extended
+    Vacation** should reinsert it at `old rank + 1` (everyone from that position down shifts by one) and
+    auto-create a challenge against whoever now holds the old rank — confirm the auto-challenge is skipped instead
+    when that entry already has a pending match. Lower `EXTENDED_VACATION_EXPIRY_MS`/`VACATION_WARNING_LEAD_MS` to
+    confirm the 3-day warning fires and, on full expiry, the `ExtendedVacation` row is removed and the player's
+    private activity-points entry (see League Manager dashboard's **Points Standing**) resets to zero.

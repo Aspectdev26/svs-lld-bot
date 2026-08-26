@@ -13,7 +13,7 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         `📜 <#${config.channels.challengeResults}> — permanent log of every challenge issued, match result, dodge/extension outcome, sign-up approval, and expiry warning/notice. The place to check "what happened."\n` +
         `🏆 <#${config.channels.rankings}> — pinned Top 10 leaderboard image, kept updated automatically, with a link to the full sheet.\n` +
         `🛡️ this channel — the Dashboard plus every pending approval: sign-ups, dodge requests, and extension requests.\n` +
-        `📝 <#${config.channels.register}> — **Sign Up** and **Leave Ladder** buttons.\n` +
+        `📝 <#${config.channels.register}> — **Sign Up**, **Leave Ladder**, **Request/Return from Vacation**, and **Request/Return from Extended Vacation** buttons.\n` +
         `📢 <#${config.channels.announcements}> — only used when a player leaves the ladder; everything else posts to the results channel above.`,
     )
     .setColor(0x3498db);
@@ -41,7 +41,21 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "**Extension** → +2 days on a match, one pending request at a time, comes here for Approve/Deny.\n\n" +
         "**Leave Ladder** → a player can remove one of their own entries any time. An active match on it is " +
         "recorded as a loss for them first. Not reversible.\n\n" +
-        "**Vacation** → League Manager only (see Dashboard) — a player can never self-exempt from challenges.",
+        "**Vacation (self-service)** → *Request Vacation* in #register needs League Manager Approve/Deny here " +
+        "(same as sign-ups). If approved while the entry has a pending match, that match is auto-forfeited (opponent " +
+        "wins) and counts as a dodge for the requester — including toward the 2/3 warning-removal thresholds. " +
+        "Approved Vacation lasts up to 14 days; *Return from Vacation* is self-service, no approval needed. Miss the " +
+        "14 days and the entry auto-escalates to Extended Vacation with no League Manager involved. The Dashboard's " +
+        "own **Vacation** toggle still exists as a manual admin override (blocks instead of auto-forfeiting if a " +
+        "match is pending).\n\n" +
+        "**Extended Vacation (self-service)** → *Request Extended Vacation* works from Available or Vacation, also " +
+        "needs Approve/Deny here (same pending-match forfeit/dodge rule as above), and removes the entry from the " +
+        "ladder entirely into the `ExtendedVacation` tab (with the rank it held). Lasts up to 30 days from whenever " +
+        "it started (request or auto-escalation). *Return from Extended Vacation* is self-service: reinserts at " +
+        "`old rank + 1` and auto-issues a challenge against whoever now holds the old rank (skipped if they're " +
+        "already in a match). Miss the 30 days and the entry is fully removed with season (activity) points reset " +
+        "to zero — resigning up is the only way back in. Both timers send a DM + a notice here 3 days before they " +
+        "expire.",
     )
     .setColor(0x3498db);
 
@@ -75,7 +89,9 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "tab as a whole doubles as a hall-of-fame of everyone who's ever held #1.\n" +
         "**Banned Users** — every active ban, its scope (one element or ALL), and reason.\n" +
         "**Ladder tab** — the live source of truth for ranks/status. The `Notes` column is yours to use freely; " +
-        "the bot never touches it.\n\n" +
+        "the bot never touches it.\n" +
+        "**VacationRequests / ExtendedVacation tabs** — the approval queue for both self-service vacation flows, " +
+        "and the current roster of everyone on Extended Vacation (with the rank they left at).\n\n" +
         "**Questions, bugs, or a feature request?** Reach out to Aspect@discord or Capacitor@jsp.",
     )
     .setColor(0x3498db);

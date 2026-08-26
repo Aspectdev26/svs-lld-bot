@@ -64,3 +64,12 @@ export async function getStandings(): Promise<StandingsEntry[]> {
 export async function resetForNewSeason(seasonName: string, seasonStartedAt: string): Promise<void> {
   await save({ seasonName, seasonStartedAt, players: {} });
 }
+
+/** Zeroes one player's current-season points (e.g. full removal after an unreturned Extended Vacation). No-op if they have no record. */
+export async function resetPlayer(discordUserId: string): Promise<void> {
+  const data = await load();
+  const existing = data.players[discordUserId];
+  if (!existing) return;
+  data.players[discordUserId] = { ...existing, points: 0 };
+  await save(data);
+}

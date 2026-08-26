@@ -7,14 +7,12 @@ import {
   TextInputBuilder,
   TextInputStyle,
   type ButtonInteraction,
-  type Client,
   type GuildMember,
 } from "discord.js";
 import * as dodgesRepo from "../../sheets/dodgesRepo.js";
 import * as matchesRepo from "../../sheets/matchesRepo.js";
 import * as matchService from "../../domain/matchService.js";
-import { removePlayer } from "../../domain/adminService.js";
-import { resolveDodge, DODGE_WARNING_THRESHOLD, DODGE_REMOVAL_THRESHOLD } from "../../domain/dodgeService.js";
+import { resolveDodge, handleDodgeCountThreshold } from "../../domain/dodgeService.js";
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation, deleteMessageByUrl } from "../notify.js";
 import { closeMatchChannel } from "../matchChannels.js";
@@ -22,76 +20,9 @@ import { refreshTop10Panel } from "../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
 import { formatElement } from "../../util/formatElement.js";
 import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
-import type { MatchRow } from "../../types.js";
 
 export const DENY_MODAL_PREFIX = "dodge_deny_modal";
 export const DENY_REASON_INPUT_ID = "deny_reason";
-
-/**
- * Reacts to the defender's post-dodge-approval dodgeCount: a private warning DM (+ League Manager
- * notice) at DODGE_WARNING_THRESHOLD, or an automatic ladder removal at DODGE_REMOVAL_THRESHOLD.
- * A no-op below the warning threshold, or if the defender's ladder entry couldn't be found.
- */
-async function handleDodgeCountThreshold(client: Client, match: MatchRow, defenderDodgeCount: number | null): Promise<void> {
-  if (defenderDodgeCount === null || defenderDodgeCount < DODGE_WARNING_THRESHOLD) return;
-
-  const elementLabel = formatElement(match.defenderElement);
-
-  if (defenderDodgeCount >= DODGE_REMOVAL_THRESHOLD) {
-    const { removedEntries, cancelledMatches } = await removePlayer(match.defenderUserId, match.defenderElement);
-    if (removedEntries.length === 0) return;
-    // Defensive: the just-approved dodge match is already resolved by this point, so this
-    // should normally find nothing, but any other pending match on this entry gets cleaned up.
-    for (const cancelled of cancelledMatches) {
-      await closeMatchChannel(client, cancelled, "Player removed by automatic dodge-count removal");
-    }
-
-    const dmEmbed = new EmbedBuilder()
-      .setTitle("Removed from the ladder")
-      .setDescription(
-        `Your **${elementLabel}** entry reached ${defenderDodgeCount} dodges against it and has been automatically removed from the ladder.`,
-      )
-      .setColor(0x992d22);
-    try {
-      const defender = await client.users.fetch(match.defenderUserId);
-      await defender.send({ embeds: [dmEmbed] });
-    } catch {
-      // DMs closed — the League Manager/results-channel notices below stand as the record.
-    }
-
-    const lmEmbed = new EmbedBuilder()
-      .setDescription(
-        `🚫 <@${match.defenderUserId}>'s **${elementLabel}** entry reached ${defenderDodgeCount} dodges against it and was automatically removed from the ladder.`,
-      )
-      .setColor(0x992d22);
-    await notify.leagueManagers(client, { embeds: [lmEmbed] });
-    await notify.challenges(client, { embeds: [lmEmbed] });
-    return;
-  }
-
-  // defenderDodgeCount === DODGE_WARNING_THRESHOLD
-  const dmEmbed = new EmbedBuilder()
-    .setTitle("Dodge warning")
-    .setDescription(
-      `Your **${elementLabel}** entry now has **${defenderDodgeCount}** dodges against it. One more and it will be ` +
-        `automatically removed from the ladder. Completing a challenge (win or lose) removes one dodge from the count.`,
-    )
-    .setColor(0xe67e22);
-  try {
-    const defender = await client.users.fetch(match.defenderUserId);
-    await defender.send({ embeds: [dmEmbed] });
-  } catch {
-    // DMs closed — the League Manager notice below still records it.
-  }
-
-  const lmEmbed = new EmbedBuilder()
-    .setDescription(
-      `⚠️ <@${match.defenderUserId}>'s **${elementLabel}** entry now has ${defenderDodgeCount} dodges against it — ` +
-        `one more triggers automatic removal from the ladder.`,
-    )
-    .setColor(0xe67e22);
-  await notify.leagueManagers(client, { embeds: [lmEmbed] });
-}
 
 export async function handleDodgeButton(interaction: ButtonInteraction): Promise<void> {
   const [action, dodgeId] = interaction.customId.split(":");
@@ -161,7 +92,7 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
   });
 
   await closeMatchChannel(interaction.client, match, "Dodge approved");
-  await handleDodgeCountThreshold(interaction.client, match, defenderDodgeCount);
+  await handleDodgeCountThreshold(interaction.client, match.defenderUserId, match.defenderElement, defenderDodgeCount);
 
   await refreshTop10Panel(interaction.client).catch((err) => console.error("Failed to refresh top 10 panel:", err));
   await refreshActiveChallengesPanel(interaction.client).catch((err) =>

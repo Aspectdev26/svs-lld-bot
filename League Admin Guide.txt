@@ -1,0 +1,206 @@
+SVS LEAGUE LADDER — ADMIN & MODERATOR GUIDE
+Last updated: 2026-08-25
+
+This document explains how the ladder league bot works end to end, and lists every
+function League Managers have access to. Share it with anyone who moderates or
+administers the league so they have a single place to reference.
+
+
+===============================================================================
+OVERVIEW
+===============================================================================
+The league is a competitive ladder across three elements (Cold, Light, Fire) and two
+builds (Vita, ES). A player can hold up to 3 entries on the ladder at once — one per
+element. Everything meaningful (sign-ups, dodges, extensions) is admin-reviewed; there
+are no self-service commands that bypass League Manager approval.
+
+All league data lives in a Google Sheet, which the bot reads/writes automatically.
+League Managers generally never need to touch the sheet directly — everything is done
+through Discord buttons and slash commands — but it's there if you ever need to look
+something up by hand.
+
+
+===============================================================================
+CHANNELS
+===============================================================================
+#register          Sign Up button and Leave Ladder button live here. Sign-up requests
+                    get sent from here to #league-managers for approval.
+
+#challenges         ("Issue a Challenge") Holds two pinned, always-current posts: the
+                    Challenge button, and the Active Challenges list (every currently
+                    pending match). Nothing else is posted here.
+
+Results channel     A permanent, never-deleted log of every challenge issued, match
+                    result, dodge approval/denial, extension outcome, admin action,
+                    expiry warning, and expiry notice. This is the channel to check for
+                    "what happened" history.
+
+#rankings           Pinned Top 10 leaderboard image, kept updated automatically. Also
+                    links to the full Google Sheet.
+
+#league-managers    The League Manager Dashboard (all admin buttons — see below) plus
+                    every pending approval request: sign-ups, dodge requests, and
+                    extension requests, each with Approve/Deny buttons.
+
+#announcements      New player sign-up announcements are posted here.
+
+
+===============================================================================
+WHAT PLAYERS CAN DO
+===============================================================================
+
+1. SIGN UP
+   - Click "Sign Up" in #register.
+   - Choose element, then build, then type a character name.
+   - Request is sent to #league-managers for a League Manager to Approve or Deny.
+   - Approved = added to the bottom of the ladder, player gets a DM confirmation, and
+     an announcement is posted to #announcements.
+   - Character names must be unique per element+build combo (case-insensitive). The
+     same name is fine on a different element or a different build.
+
+2. ISSUE A CHALLENGE
+   - /challenge, or the pinned "Challenge" button in #challenges.
+   - Can challenge up to 3 ranks above their own rank (only 2 ranks if the target is in
+     the Top 10).
+   - Can't challenge their own other-element entries, or anyone currently on Vacation.
+   - Creates a private match channel (visible only to the two players + League
+     Managers) with Report Win / Request Dodge / Request Extension buttons.
+   - A match must be resolved within 72 hours (default) or it auto-expires with no
+     rank change. Both players get a warning 24 hours before it expires.
+
+3. REPORT A WIN
+   - /report-win, or the "Report Win" button in the match channel.
+   - Either player can report the result — they pick who actually won from a dropdown
+     (nothing is pre-selected, so it's always an explicit choice). This means a player
+     can self-report, concede, or correct a mistaken report.
+   - Challenger wins -> ranks swap. Defender wins -> nothing changes.
+
+4. REQUEST A DODGE (opponent went silent)
+   - Available once 24 hours have passed on a match with no result.
+   - /dodge-request (attach a screenshot), or the "Request Dodge" button in the match
+     channel (post the screenshot as a message first, then click Submit Dodge Request).
+   - Goes to #league-managers for Approve/Deny.
+   - Approved = same effect as a challenger win (ranks swap), match channel closes.
+
+5. REQUEST AN EXTENSION
+   - "Request Extension" button in the match channel — asks for 2 extra days.
+   - Goes to #league-managers for Approve/Deny. Only one extension request can be
+     pending on a match at a time.
+
+6. LEAVE THE LADDER
+   - "Leave Ladder" button in #register.
+   - If they have more than one entry, they're asked which one to leave.
+   - If that entry has an active match, it's recorded as a loss for them first (the
+     opponent gets credited the win, including any rank swap), then the entry is
+     removed and the gap closes.
+   - Not reversible — they'd need to sign up again and be re-approved to rejoin.
+
+7. VACATION STATUS
+   - Players CANNOT set this themselves. League Manager only — see below.
+   - While on Vacation, a player can't be challenged and can't issue challenges.
+
+
+===============================================================================
+LEAGUE MANAGER DASHBOARD
+(pinned message in #league-managers — restricted to the "League Manager" role)
+===============================================================================
+Every action taken from this dashboard is announced publicly in the results channel,
+so the whole server can see what changed and who did it.
+
+1. RESET LADDER (END SEASON)
+   - Cancels every currently active match.
+   - Randomizes everyone's rank order.
+   - Asks for a name for the NEW season that's starting.
+   - A brand-new, empty tab is created under that name immediately, and that season's
+     stats (defends/wins/losses) update live in it from that point forward — you don't
+     have to wait for the next reset to see it named and populated.
+   - The season that just ended simply keeps the tab it was already using — it's
+     automatically frozen in place as the permanent record for that season, no extra
+     step needed.
+   - Does NOT affect all-time stats (the "All Time Stats" tab).
+   - Irreversible — requires a confirmation click before it runs.
+
+2. SHUFFLE RANKS
+   - Randomizes rank order ONLY. Does not touch season stats and does not cancel
+     matches.
+   - Use this to shake up the ladder mid-season without ending the season.
+   - Warns you first if there are currently active challenges, since shuffling ranks
+     while a challenge is in progress can make "who challenged whom, at what rank"
+     confusing.
+   - Requires a confirmation click.
+
+3. PAUSE / RESUME LADDER  (single toggle button)
+   - Pause: blocks new challenges from being issued, and freezes the countdown timer
+     on every currently active match (they won't warn or expire while paused).
+   - Resume: un-blocks new challenges, and shifts every active match's timer forward
+     by exactly how long the ladder was paused — so nobody loses time to the pause.
+   - Use this for planned downtime, events, or any time you need to freeze things
+     without cancelling active matches.
+
+4. REMOVE PLAYER
+   - Pick one character (by character name, not Discord name) to take off the ladder.
+   - Cancels any match that entry was in, then closes the rank gap below it.
+   - Only removes ONE element-entry at a time. For a player with multiple elements,
+     either remove each one individually, or use Ban Player to clear them all at once.
+
+5. BAN PLAYER
+   - Pick a player, a scope (one element, or ALL of their elements), and a reason.
+   - Removes matching entries the same way Remove Player does.
+   - Also blocks that player from signing up again for that scope (they're rejected
+     at the #register element step, before they can even fill anything else in).
+
+6. UNBAN
+   - Lists everyone currently banned — lift a ban with a click.
+
+7. FORCE-CANCEL MATCH
+   - Pick any currently active match league-wide and void it — no rank change either
+     way.
+   - Use this for disputes, or mistaken/accidental challenges that don't fit the
+     normal dodge process.
+
+8. SET RANK
+   - Pick a player/entry and type an exact new rank number.
+   - Everyone between the old and new position automatically shifts by one, same as
+     inserting into a sorted list — the ladder stays a clean 1..N afterward.
+
+9. PENDING SIGN-UPS
+   - Lists every sign-up request still awaiting review, with Approve/Deny right there.
+   - Also doubles as the recovery path if a sign-up request's original post in
+     #league-managers never showed up for some reason.
+
+10. VACATION
+   - Pick one character (by character name) to toggle their status between Vacation
+     and Available.
+   - This is the ONLY way to set Vacation — there's no self-service option, so a
+     player can never dodge a challenge or make themselves un-challengeable on their
+     own.
+
+
+===============================================================================
+HOW STATS ARE TRACKED
+===============================================================================
+- SEASON STATS (defends / wins / losses): tracked since the last "Reset Ladder (End
+  Season)". Each season now lives in its own tab named after that season (created the
+  moment the season starts via Reset Ladder), and updates live as matches are played.
+- ALL-TIME STATS ("All Time Stats" tab): a permanent, never-wiped record of EVERY
+  player on the ladder — not just Rank 1 holders. A row is created for a character
+  the first time they win or lose any match, at any rank, and their all-time Wins
+  and Losses totals climb from there. Survives every season reset. The Defends
+  column is the one piece scoped to Rank 1 specifically: it's each rank-1 holder's
+  count of consecutive successful title defenses, and the tab as a whole also
+  serves as a hall-of-fame list of everyone who's ever held the top spot.
+- BANNED USERS ("BannedUsers" tab): every active ban, with its scope (one element or
+  ALL) and reason.
+- LADDER tab: the live source of truth for current ranks, character info, and whether
+  someone's mid-challenge or on Vacation. League Managers can write freely into the
+  Notes column — the bot never touches it.
+
+
+===============================================================================
+NEED HELP, OR WANT SOMETHING NEW BUILT?
+===============================================================================
+For any issues, questions, bugs, or requests for new features/integrations, reach out
+to:
+
+    Aspect@discord
+    Capacitor@jsp

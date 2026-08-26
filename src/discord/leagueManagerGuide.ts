@@ -31,7 +31,13 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "**Report Win** → either player can report; they pick the actual winner from a dropdown (nothing " +
         "pre-selected). Challenger wins → ranks swap. Defender wins → nothing changes.\n\n" +
         "**Dodge** → requestable once a match has sat 24h with no result, with a screenshot attached. Comes here " +
-        "for Approve/Deny. Approved = counts as a challenger win.\n\n" +
+        "for Approve/Deny. Approved = counts as a challenger win, and adds 1 to the defender's dodge count. At 2 " +
+        "dodges the defender gets a private warning DM and this channel gets a notice; at 3 their entry is " +
+        "automatically removed from the ladder (DM + notice here + results channel). Completing any reported " +
+        "match — win or lose — removes 1 from a player's dodge count, down to a floor of 0. That dodge count " +
+        "resets to 0 whenever the entry is removed (dodge-removed, banned, or manually removed) or the season " +
+        "ends — separate from the **All Time Stats** tab's own dodge total, which is permanent and never reset " +
+        "or decremented, same as its Wins/Losses/Defends.\n\n" +
         "**Extension** → +2 days on a match, one pending request at a time, comes here for Approve/Deny.\n\n" +
         "**Leave Ladder** → a player can remove one of their own entries any time. An active match on it is " +
         "recorded as a loss for them first. Not reversible.\n\n" +
@@ -50,8 +56,10 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "track live in it from that moment on.\n" +
         "• The season that just ended keeps the tab it was already using — automatically frozen in place as its " +
         "permanent record, no copy step needed.\n" +
-        "• Every currently active match is cancelled and every rank is randomized.\n\n" +
-        "**Unaffected:** nobody is removed from the ladder, and All-Time Stats are never touched.\n\n" +
+        "• Every currently active match is cancelled and every rank is randomized.\n" +
+        "• Every entry's dodge count (the warning/removal counter) resets to 0.\n\n" +
+        "**Unaffected:** nobody is removed from the ladder, dodge *wins* aren't touched, and All-Time Stats are " +
+        "never touched.\n\n" +
         "**Note:** a season name can't be reused — you'll be asked to pick a different one. Once confirmed with a " +
         "valid name, this **can't be undone**.",
     )

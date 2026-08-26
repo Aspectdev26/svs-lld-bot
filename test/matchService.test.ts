@@ -7,6 +7,7 @@ vi.mock("../src/sheets/ladderRepo.js", () => ({
   clearChallengeInfo: vi.fn(),
   setChallengeInfo: vi.fn(),
   setDodgeWins: vi.fn(),
+  setDodgeCount: vi.fn(),
   sortLadderByRank: vi.fn(),
 }));
 vi.mock("../src/sheets/matchesRepo.js", () => ({
@@ -17,12 +18,23 @@ vi.mock("../src/sheets/matchesRepo.js", () => ({
 }));
 vi.mock("../src/domain/rank1Tracker.js", () => ({
   recordMatchResult: vi.fn(),
+  recordDodgeAgainst: vi.fn(),
+}));
+// pointsService writes to the real local data/points.json with no locking — mock it out so
+// concurrent test calls (reportWin/applyDodgeWin fire several of these per call via Promise.all)
+// can't race and corrupt that file.
+vi.mock("../src/domain/pointsService.js", () => ({
+  recordChallengeIssued: vi.fn(),
+  recordMatchCompleted: vi.fn(),
+  recordDodgeAgainst: vi.fn(),
+  recordMatchExpired: vi.fn(),
+  recordExtensionRequested: vi.fn(),
 }));
 
 import * as ladderRepo from "../src/sheets/ladderRepo.js";
 import * as matchesRepo from "../src/sheets/matchesRepo.js";
 import * as rank1Tracker from "../src/domain/rank1Tracker.js";
-import { reportWin, getChallengeCooldownExpiry } from "../src/domain/matchService.js";
+import { reportWin, applyDodgeWin, getChallengeCooldownExpiry } from "../src/domain/matchService.js";
 
 function ladderRow(overrides: Partial<LadderRow> = {}): LadderRow {
   return {
@@ -39,6 +51,7 @@ function ladderRow(overrides: Partial<LadderRow> = {}): LadderRow {
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
+    dodgeCount: 0,
     ...overrides,
   };
 }
@@ -70,10 +83,13 @@ beforeEach(() => {
   vi.mocked(ladderRepo.findEntry).mockReset();
   vi.mocked(ladderRepo.setRank).mockReset();
   vi.mocked(ladderRepo.clearChallengeInfo).mockReset();
+  vi.mocked(ladderRepo.setDodgeWins).mockReset();
+  vi.mocked(ladderRepo.setDodgeCount).mockReset();
   vi.mocked(ladderRepo.sortLadderByRank).mockReset();
   vi.mocked(matchesRepo.getMatchById).mockReset();
   vi.mocked(matchesRepo.updateMatch).mockReset();
   vi.mocked(rank1Tracker.recordMatchResult).mockReset().mockResolvedValue({ changed: false });
+  vi.mocked(rank1Tracker.recordDodgeAgainst).mockReset();
 });
 
 describe("reportWin", () => {
@@ -137,6 +153,62 @@ describe("reportWin", () => {
       expect(result.match.winnerUserId).toBe("u2");
     }
     expect(ladderRepo.setRank).not.toHaveBeenCalled();
+  });
+
+  it("decrements dodgeCount for both participants when it's above 0", async () => {
+    const match = matchRow();
+    vi.mocked(matchesRepo.getMatchById).mockResolvedValue(match);
+    const challengerEntry = ladderRow({ sheetRow: 2, discordUserId: "u1", rank: 3, dodgeCount: 1 });
+    const defenderEntry = ladderRow({ sheetRow: 3, discordUserId: "u2", rank: 1, dodgeCount: 2 });
+    vi.mocked(ladderRepo.findEntry).mockImplementation(async (userId) =>
+      userId === "u1" ? challengerEntry : defenderEntry,
+    );
+
+    await reportWin("u1", "m1", "u1");
+
+    expect(ladderRepo.setDodgeCount).toHaveBeenCalledWith(2, 0);
+    expect(ladderRepo.setDodgeCount).toHaveBeenCalledWith(3, 1);
+  });
+
+  it("leaves dodgeCount alone (no write) for a participant already at 0", async () => {
+    const match = matchRow();
+    vi.mocked(matchesRepo.getMatchById).mockResolvedValue(match);
+    const challengerEntry = ladderRow({ sheetRow: 2, discordUserId: "u1", rank: 3, dodgeCount: 0 });
+    const defenderEntry = ladderRow({ sheetRow: 3, discordUserId: "u2", rank: 1, dodgeCount: 0 });
+    vi.mocked(ladderRepo.findEntry).mockImplementation(async (userId) =>
+      userId === "u1" ? challengerEntry : defenderEntry,
+    );
+
+    await reportWin("u1", "m1", "u1");
+
+    expect(ladderRepo.setDodgeCount).not.toHaveBeenCalled();
+  });
+});
+
+describe("applyDodgeWin", () => {
+  it("increments the defender's dodgeCount and returns the new value", async () => {
+    const match = matchRow();
+    const challengerEntry = ladderRow({ sheetRow: 2, discordUserId: "u1", rank: 3 });
+    const defenderEntry = ladderRow({ sheetRow: 3, discordUserId: "u2", rank: 1, dodgeCount: 1 });
+    vi.mocked(ladderRepo.findEntry).mockImplementation(async (userId) =>
+      userId === "u1" ? challengerEntry : defenderEntry,
+    );
+
+    const result = await applyDodgeWin(match);
+
+    expect(result.defenderDodgeCount).toBe(2);
+    expect(ladderRepo.setDodgeCount).toHaveBeenCalledWith(3, 2);
+    expect(rank1Tracker.recordDodgeAgainst).toHaveBeenCalledWith(defenderEntry);
+  });
+
+  it("returns null defenderDodgeCount when the defender's ladder entry can't be found", async () => {
+    const match = matchRow();
+    vi.mocked(ladderRepo.findEntry).mockResolvedValue(undefined);
+
+    const result = await applyDodgeWin(match);
+
+    expect(result.defenderDodgeCount).toBeNull();
+    expect(ladderRepo.setDodgeCount).not.toHaveBeenCalled();
   });
 });
 

@@ -6,6 +6,7 @@ vi.mock("../src/sheets/ladderRepo.js", () => ({
   getLadder: vi.fn(),
   clearRow: vi.fn(),
   setRank: vi.fn(),
+  setDodgeCount: vi.fn(),
   findEntry: vi.fn(),
   clearChallengeInfo: vi.fn(),
   sortLadderByRank: vi.fn(),
@@ -36,12 +37,18 @@ vi.mock("../src/domain/rankingService.js", async () => {
 vi.mock("../src/sheets/ladderFormatting.js", () => ({
   applyLadderFormatting: vi.fn().mockResolvedValue(undefined),
 }));
+// pointsStore writes to the real local data/points.json with no locking — mock it out so
+// resetLadderEndSeason tests below can't overwrite/wipe that live file.
+vi.mock("../src/domain/pointsStore.js", () => ({
+  resetForNewSeason: vi.fn(),
+}));
 
 import * as ladderRepo from "../src/sheets/ladderRepo.js";
 import * as matchesRepo from "../src/sheets/matchesRepo.js";
 import * as bannedRepo from "../src/sheets/bannedRepo.js";
 import * as seasonStatsRepo from "../src/sheets/seasonStatsRepo.js";
 import * as rankingService from "../src/domain/rankingService.js";
+import * as pointsStore from "../src/domain/pointsStore.js";
 import { ALL_ELEMENTS } from "../src/sheets/bannedRepo.js";
 import { removePlayer, banPlayer, forceCancelMatch, resetLadderEndSeason, shuffleLadderRanks } from "../src/domain/adminService.js";
 
@@ -60,6 +67,7 @@ function entry(overrides: Partial<LadderRow> = {}): LadderRow {
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
+    dodgeCount: 0,
     ...overrides,
   };
 }
@@ -92,6 +100,7 @@ beforeEach(() => {
   vi.mocked(ladderRepo.getLadder).mockReset().mockResolvedValue([]);
   vi.mocked(ladderRepo.clearRow).mockReset();
   vi.mocked(ladderRepo.setRank).mockReset();
+  vi.mocked(ladderRepo.setDodgeCount).mockReset();
   vi.mocked(ladderRepo.findEntry).mockReset().mockResolvedValue(undefined);
   vi.mocked(ladderRepo.clearChallengeInfo).mockReset();
   vi.mocked(ladderRepo.sortLadderByRank).mockReset();
@@ -104,6 +113,7 @@ beforeEach(() => {
   vi.mocked(seasonStatsRepo.startNewSeason).mockReset();
   vi.mocked(seasonStatsRepo.tabExists).mockReset().mockResolvedValue(false);
   vi.mocked(rankingService.shuffleRanks).mockReset().mockReturnValue([]);
+  vi.mocked(pointsStore.resetForNewSeason).mockReset();
 });
 
 describe("removePlayer", () => {
@@ -244,6 +254,22 @@ describe("resetLadderEndSeason", () => {
     if (!result.ok) return;
     expect(result.cancelledMatches).toEqual([pendingMatch]);
     expect(matchesRepo.updateMatch).toHaveBeenCalledWith(expect.objectContaining({ status: "Cancelled" }));
+  });
+
+  it("clears every entry's dodgeCount back to 0, leaving entries already at 0 untouched", async () => {
+    vi.mocked(matchesRepo.getPendingMatches).mockResolvedValue([]);
+    const ladder = [
+      entry({ sheetRow: 2, discordUserId: "u1", dodgeCount: 2 }),
+      entry({ sheetRow: 3, discordUserId: "u2", dodgeCount: 0 }),
+    ];
+    vi.mocked(ladderRepo.getLadder).mockResolvedValue(ladder);
+
+    const result = await resetLadderEndSeason("Season 1");
+
+    expect(result.ok).toBe(true);
+    expect(ladderRepo.setDodgeCount).toHaveBeenCalledWith(2, 0);
+    expect(ladderRepo.setDodgeCount).not.toHaveBeenCalledWith(3, 0);
+    expect(ladderRepo.setDodgeCount).toHaveBeenCalledTimes(1);
   });
 
   it("shuffles the ranks three times and applies only the net rank change", async () => {

@@ -43,6 +43,15 @@ export async function recordMatchResult(
 }
 
 /**
+ * Records a permanent, never-reset dodge against `defenderEntry` on the All Time Stats tab — call
+ * once per approved dodge, alongside the Ladder's own resettable `dodgeCount`. Returns the new
+ * all-time total.
+ */
+export async function recordDodgeAgainst(defenderEntry: LadderRow): Promise<number> {
+  return rank1Repo.recordDodgeAgainst(defenderEntry);
+}
+
+/**
  * Reconciles the All Time Stats tracker to whoever now actually sits at rank 1 on `ladder` — for
  * rank shakeups that didn't go through a reported match (admin overrides, a player leaving the
  * ladder outright). Leaves the holder's defend total alone if they didn't change; crowns (or

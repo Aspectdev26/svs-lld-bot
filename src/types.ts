@@ -31,6 +31,13 @@ export interface LadderRow {
   notes: string;
   /** Running count of matches this entry has won via an approved dodge. */
   dodgeWins: number;
+  /**
+   * Running count of approved dodges *against* this entry (i.e. matches it lost by not
+   * responding). Reaching 2 triggers a private warning to the player plus a League Manager
+   * notice; reaching 3 auto-removes the entry from the ladder. Completing a reported match
+   * (win or loss) decrements this by 1, down to a floor of 0 — see matchService.reportWin.
+   */
+  dodgeCount: number;
 }
 
 export const MATCH_STATUSES = [
@@ -104,6 +111,13 @@ export interface Rank1Row {
   wins: number;
   /** All-time total of matches lost (any rank). */
   losses: number;
+  /**
+   * All-time, permanent total of approved dodges against this entry — unlike the Ladder's
+   * `dodgeCount` (the resettable warning/removal counter), this is never decremented or reset by
+   * anything: not a season end, not the entry being removed from the ladder. Purely historical,
+   * same as `wins`/`losses`/`defends` on this tab.
+   */
+  dodgesAgainst: number;
 }
 
 /**

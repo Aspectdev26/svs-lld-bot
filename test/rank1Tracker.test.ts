@@ -7,6 +7,7 @@ vi.mock("../src/sheets/rank1Repo.js", () => ({
   getCurrentHolderRow: vi.fn(),
   recordWin: vi.fn(),
   recordLoss: vi.fn(),
+  recordDodgeAgainst: vi.fn(),
 }));
 vi.mock("../src/sheets/seasonStatsRepo.js", () => ({
   recordDefend: vi.fn(),
@@ -16,7 +17,7 @@ vi.mock("../src/sheets/seasonStatsRepo.js", () => ({
 
 import * as rank1Repo from "../src/sheets/rank1Repo.js";
 import * as seasonStatsRepo from "../src/sheets/seasonStatsRepo.js";
-import { recordMatchResult, syncToCurrentHolder } from "../src/domain/rank1Tracker.js";
+import { recordMatchResult, syncToCurrentHolder, recordDodgeAgainst } from "../src/domain/rank1Tracker.js";
 import type { Rank1Row } from "../src/types.js";
 
 function entry(overrides: Partial<LadderRow> = {}): LadderRow {
@@ -34,6 +35,7 @@ function entry(overrides: Partial<LadderRow> = {}): LadderRow {
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
+    dodgeCount: 0,
     ...overrides,
   };
 }
@@ -49,6 +51,9 @@ function rank1Row(overrides: Partial<Rank1Row> = {}): Rank1Row {
     defends: 3,
     holderSince: "2026-01-01T00:00:00.000Z",
     currentHolder: true,
+    wins: 0,
+    losses: 0,
+    dodgesAgainst: 0,
     ...overrides,
   };
 }
@@ -59,6 +64,7 @@ beforeEach(() => {
   vi.mocked(rank1Repo.getCurrentHolderRow).mockReset();
   vi.mocked(rank1Repo.recordWin).mockReset();
   vi.mocked(rank1Repo.recordLoss).mockReset();
+  vi.mocked(rank1Repo.recordDodgeAgainst).mockReset();
   vi.mocked(seasonStatsRepo.recordDefend).mockReset();
   vi.mocked(seasonStatsRepo.recordWin).mockReset();
   vi.mocked(seasonStatsRepo.recordLoss).mockReset();
@@ -120,6 +126,18 @@ describe("recordMatchResult", () => {
 
     expect(result).toEqual({ changed: true, kind: "defended", holderName: "Alice", defends: 1 });
     expect(rank1Repo.recordDefend).toHaveBeenCalledWith(defender);
+  });
+});
+
+describe("recordDodgeAgainst", () => {
+  it("delegates to rank1Repo.recordDodgeAgainst and returns its result", async () => {
+    const defender = entry({ discordUserId: "u-alice", characterName: "Alice" });
+    vi.mocked(rank1Repo.recordDodgeAgainst).mockResolvedValue(5);
+
+    const result = await recordDodgeAgainst(defender);
+
+    expect(result).toBe(5);
+    expect(rank1Repo.recordDodgeAgainst).toHaveBeenCalledWith(defender);
   });
 });
 

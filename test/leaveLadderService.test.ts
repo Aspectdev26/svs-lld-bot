@@ -31,6 +31,7 @@ function entry(overrides: Partial<LadderRow> = {}): LadderRow {
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
+    dodgeCount: 0,
     ...overrides,
   };
 }

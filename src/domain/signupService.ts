@@ -94,6 +94,7 @@ export async function approveSignup(request: SignupRequestRow, resolvedByUserId:
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
+    dodgeCount: 0,
   };
   await ladderRepo.addLadderEntry(newEntry);
 

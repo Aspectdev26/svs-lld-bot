@@ -48,6 +48,16 @@ export async function getChallengeCooldownExpiry(
   return expiry.getTime() > Date.now() ? expiry : null;
 }
 
+/**
+ * Reduces an entry's dodgeCount by 1 (floor 0) as the "redemption" side effect of actually
+ * completing a challenge, per matchService.reportWin — a no-op once already at 0.
+ */
+async function decrementDodgeCountIfAny(entry: LadderRow): Promise<void> {
+  if (entry.dodgeCount > 0) {
+    await ladderRepo.setDodgeCount(entry.sheetRow, entry.dodgeCount - 1);
+  }
+}
+
 /** Fetches both ladder entries for a match and clears their Ladder-sheet "Challenge" display. */
 async function clearLadderChallengeDisplay(match: MatchRow): Promise<void> {
   const [challengerEntry, defenderEntry] = await Promise.all([
@@ -158,6 +168,8 @@ export async function reportWin(reporterUserId: string, matchId: string, winnerU
     await Promise.all([
       pointsService.recordMatchCompleted(challengerEntry.discordUserId, challengerEntry.discordName, match.createdAt, match.resolvedAt),
       pointsService.recordMatchCompleted(defenderEntry.discordUserId, defenderEntry.discordName, match.createdAt, match.resolvedAt),
+      decrementDodgeCountIfAny(challengerEntry),
+      decrementDodgeCountIfAny(defenderEntry),
     ]);
   }
 
@@ -184,14 +196,21 @@ export async function cancelMatch(match: MatchRow): Promise<void> {
   await clearLadderChallengeDisplay(match);
 }
 
+export interface ApplyDodgeWinResult {
+  rank1Update: Rank1Update;
+  /** Defender's dodgeCount *after* this dodge, or null if their ladder entry couldn't be found. */
+  defenderDodgeCount: number | null;
+}
+
 /** Apply a dodge-approved win for the challenger (same rank-swap rule as a normal reported win). */
-export async function applyDodgeWin(match: MatchRow): Promise<Rank1Update> {
+export async function applyDodgeWin(match: MatchRow): Promise<ApplyDodgeWinResult> {
   const [challengerEntry, defenderEntry] = await Promise.all([
     ladderRepo.findEntry(match.challengerUserId, match.challengerElement),
     ladderRepo.findEntry(match.defenderUserId, match.defenderElement),
   ]);
 
   let rank1Update: Rank1Update = { changed: false };
+  let defenderDodgeCount: number | null = null;
 
   if (challengerEntry && defenderEntry) {
     rank1Update = await rank1Tracker.recordMatchResult(defenderEntry.rank, defenderEntry, challengerEntry, true);
@@ -199,6 +218,8 @@ export async function applyDodgeWin(match: MatchRow): Promise<Rank1Update> {
     await ladderRepo.setRank(challengerEntry.sheetRow, challengerRank);
     await ladderRepo.setRank(defenderEntry.sheetRow, defenderRank);
     await ladderRepo.setDodgeWins(challengerEntry.sheetRow, challengerEntry.dodgeWins + 1);
+    defenderDodgeCount = defenderEntry.dodgeCount + 1;
+    await ladderRepo.setDodgeCount(defenderEntry.sheetRow, defenderDodgeCount);
     await ladderRepo.clearChallengeInfo(challengerEntry.sheetRow);
     await ladderRepo.clearChallengeInfo(defenderEntry.sheetRow);
 
@@ -209,11 +230,13 @@ export async function applyDodgeWin(match: MatchRow): Promise<Rank1Update> {
     // A dodge win isn't "activity" (no match was actually played), so only the dodged-against
     // side is scored — no completion/speed bonus for either participant.
     await pointsService.recordDodgeAgainst(defenderEntry.discordUserId, defenderEntry.discordName);
+    // Permanent, never-reset historical count — separate from the Ladder's own resettable dodgeCount above.
+    await rank1Tracker.recordDodgeAgainst(defenderEntry);
   }
   match.status = "DodgeApproved";
   match.winnerUserId = match.challengerUserId;
   match.resolvedAt = new Date().toISOString();
   await matchesRepo.updateMatch(match);
 
-  return rank1Update;
+  return { rank1Update, defenderDodgeCount };
 }

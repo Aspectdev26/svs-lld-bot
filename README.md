@@ -41,11 +41,13 @@ requests with screenshot evidence.
   new challenge, match result, dodge approval/denial, extension outcome, admin cancellation, the 24h-before-expiry
   warning, the expiry notice — and none of it auto-deletes; it's a permanent running log.
 - **The `Ladder` tab matches the league's original reference sheet**: same column order and labels (`Rank`, `Name`,
-  `spec`, `element`, `discUser`, `Status`, `cDate`, `Opp#`, `discord userid`, `Notes`, `Dodges`), same color scheme,
-  and the same three-state `Status` display. `Status` shows **Challenge** (with `cDate`/`Opp#` filled in — the
-  timestamp and the opponent's rank at the moment the challenge was issued) whenever that entry has an active
-  match, reverting to **Available**/**Vacation** the moment it resolves — no separate "in a match" tracking to
-  read elsewhere. `Dodges` counts how many matches that entry has won via an approved dodge. `Notes` is left
+  `spec`, `element`, `discUser`, `Status`, `cDate`, `Opp#`, `discord userid`, `Notes`, `Dodges`), plus one trailing
+  `DodgesAgainst` column the bot added, same color scheme, and the same three-state `Status` display. `Status`
+  shows **Challenge** (with `cDate`/`Opp#` filled in — the timestamp and the opponent's rank at the moment the
+  challenge was issued) whenever that entry has an active match, reverting to **Available**/**Vacation** the
+  moment it resolves — no separate "in a match" tracking to read elsewhere. `Dodges` counts how many matches that
+  entry has won via an approved dodge. `DodgesAgainst` counts approved dodges *against* that entry (see **Dodges**
+  below for the warning/removal behavior it drives). `Notes` is left
   entirely alone for League Managers to use by hand. Colors (element/status backgrounds, rank-1/2/3 badges, header
   banding) are applied via native Google Sheets conditional formatting, so they recompute automatically as values
   change — the bot only ever writes plain text/numbers, never touches cell formatting after initial setup.
@@ -79,6 +81,8 @@ requests with screenshot evidence.
   successful title defenses, increments when the rank-1 holder wins a challenge against them, is preserved (not
   reset) if that player later reclaims rank 1 after losing it, and the tab doubles as a hall-of-fame list of
   everyone who's ever held the top spot. Announced in the results channel alongside the match result.
+  `DodgesAgainst` is the same kind of permanent counter, bumped once per approved dodge against that
+  character — unaffected by season resets or by the character being removed from (or rejoining) the ladder.
 - **One match per element**: a player can have up to 3 matches running at once (one per element), but a given
   element-entry can only be in one match at a time.
 - **Match channels**: issuing a challenge (`/challenge`) auto-creates a private text channel under the
@@ -101,6 +105,16 @@ requests with screenshot evidence.
   Request**). It posts to `#league-managers` with Approve/Deny buttons (gated to the `League Manager` role).
   Approve swaps ranks in the challenger's favor and closes the match channel; Deny opens a reason modal and DMs
   the requester (falls back to a mention in the results channel if DMs are closed).
+- **Dodge counts (warning/auto-removal)**: each approved dodge adds 1 to the defender's `DodgesAgainst`. At 2, the
+  defender gets a private warning DM plus a notice in `#league-managers`; at 3, their entry is automatically
+  removed from the ladder (DM to the player, plus a notice in both `#league-managers` and the results channel).
+  Completing any reported match — win or lose, via `/report-win` or the **Report Win** button — subtracts 1 from
+  *both* participants' `DodgesAgainst` (floor 0), so staying active is how a player works their count back down;
+  a dodge-approved win doesn't count as "completing" a match for this purpose, since nothing was actually played.
+  A "Reset Ladder (End Season)" also zeroes every entry's `DodgesAgainst`, and the counter is gone entirely if the
+  entry itself is removed (auto-removal, ban, or manual admin removal) — see below. This is separate from the
+  `All Time Stats` tab's own `DodgesAgainst` column: a permanent, append-only historical total that's never reset
+  or decremented by anything, same as that tab's `Wins`/`Losses`/`Defends`.
 - **Extensions**: either participant can hit **Request Extension** in their match channel to ask for 2 extra days.
   It posts to `#league-managers` with Approve/Deny buttons; Approve pushes the match's expiry back by
   `EXTENSION_GRANT_MS` (default 2 days) and re-arms the 24h-before-expiry warning.
@@ -114,8 +128,9 @@ requests with screenshot evidence.
     asks for a name for the new season that's starting. Season stats (defends/wins/losses) live in a tab named
     after the season — this creates a fresh, empty one under the given name and points future stat-tracking at it;
     the season that just ended simply keeps the tab it's been using the whole time, now frozen as its permanent
-    record, with no separate archive/copy step. All-time stats (`All Time Stats` tab) are unaffected. Requires a
-    confirmation click since it's irreversible.
+    record, with no separate archive/copy step. All-time stats (`All Time Stats` tab) are unaffected. Every entry's
+    `DodgesAgainst` also resets to 0 (a clean slate for the warning/removal count each season); `Dodges` (dodge
+    wins) is left untouched. Requires a confirmation click since it's irreversible.
   - **Remove Player** — pick one character directly from a dropdown of every ladder entry (by character name, not
     Discord name); removes just that entry and cancels any match it was in, then closes the gap by renumbering
     everyone below it. Always targets exactly one character — to clear out all of a player's entries, remove each

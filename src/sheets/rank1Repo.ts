@@ -20,6 +20,7 @@ export const RANK1_HEADERS = [
   "CurrentHolder",
   "Wins",
   "Losses",
+  "DodgesAgainst",
 ];
 
 function toValues(row: Omit<Rank1Row, "sheetRow">): (string | number)[] {
@@ -34,11 +35,13 @@ function toValues(row: Omit<Rank1Row, "sheetRow">): (string | number)[] {
     row.currentHolder ? "Yes" : "",
     row.wins,
     row.losses,
+    row.dodgesAgainst,
   ];
 }
 
 function rowFromValues(sheetRow: number, values: string[]): Rank1Row {
-  const [discordUserId, discordName, characterName, element, build, defends, holderSince, currentHolder, wins, losses] = values;
+  const [discordUserId, discordName, characterName, element, build, defends, holderSince, currentHolder, wins, losses, dodgesAgainst] =
+    values;
   return {
     sheetRow,
     discordUserId: discordUserId ?? "",
@@ -51,12 +54,13 @@ function rowFromValues(sheetRow: number, values: string[]): Rank1Row {
     currentHolder: (currentHolder ?? "").trim().toLowerCase() === "yes",
     wins: Number.parseInt(wins, 10) || 0,
     losses: Number.parseInt(losses, 10) || 0,
+    dodgesAgainst: Number.parseInt(dodgesAgainst, 10) || 0,
   };
 }
 
 /** Every player (per element) who has ever held rank 1 or recorded a win/loss — the tab is a permanent, append-only history. */
 export async function getAllRows(): Promise<Rank1Row[]> {
-  const values = await readSheetRange(`${RANK1_SHEET}!A2:J`);
+  const values = await readSheetRange(`${RANK1_SHEET}!A2:K`);
   return values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is Rank1Row => r !== null);
@@ -108,6 +112,7 @@ export async function crownHolder(entry: LadderRow, holderSince = new Date().toI
       currentHolder: true,
       wins: 0,
       losses: 0,
+      dodgesAgainst: 0,
     }),
   );
 }
@@ -135,14 +140,15 @@ export async function recordDefend(entry: LadderRow): Promise<number> {
         currentHolder: true,
         wins: 0,
         losses: 0,
+        dodgesAgainst: 0,
       }),
     );
   }
   return defends;
 }
 
-/** Bumps `entry`'s all-time win or loss total by one, creating its row (at 0/0/0) if this is their first recorded match. */
-async function upsertStat(entry: LadderRow, field: "wins" | "losses"): Promise<number> {
+/** Bumps `entry`'s all-time win/loss/dodgesAgainst total by one, creating its row (at 0/0/0/0) if this is their first recorded activity. */
+async function upsertStat(entry: LadderRow, field: "wins" | "losses" | "dodgesAgainst"): Promise<number> {
   const rows = await getAllRows();
   const existing = rows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
   const newValue = (existing?.[field] ?? 0) + 1;
@@ -163,6 +169,7 @@ async function upsertStat(entry: LadderRow, field: "wins" | "losses"): Promise<n
         currentHolder: false,
         wins: field === "wins" ? 1 : 0,
         losses: field === "losses" ? 1 : 0,
+        dodgesAgainst: field === "dodgesAgainst" ? 1 : 0,
       }),
     );
   }
@@ -177,4 +184,12 @@ export async function recordWin(entry: LadderRow): Promise<number> {
 /** Records an all-time loss for `entry` (any rank, any outcome type — reported loss or dodge loss). Returns the new total. */
 export async function recordLoss(entry: LadderRow): Promise<number> {
   return upsertStat(entry, "losses");
+}
+
+/**
+ * Records an all-time, never-reset dodge against `entry` on this permanent tab — distinct from the
+ * Ladder's `dodgeCount`, which is the resettable warning/removal counter. Returns the new total.
+ */
+export async function recordDodgeAgainst(entry: LadderRow): Promise<number> {
+  return upsertStat(entry, "dodgesAgainst");
 }

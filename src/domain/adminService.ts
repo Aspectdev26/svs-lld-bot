@@ -40,8 +40,10 @@ function shuffleRepeatedly(ladder: LadderRow[]): RankChange[] {
  * that saw no activity (so it stands as a complete record once writes move on), then creates a
  * brand-new tab titled `newSeasonName` for the upcoming season and points future season-stat
  * writes at it — the just-ended season's tab is left exactly as-is, no copy step needed. Also
- * cancels active matches and shuffles rank order three times. Rejects a name that collides with
- * any existing tab without making any changes.
+ * cancels active matches, shuffles rank order three times, and clears every entry's `dodgeCount`
+ * back to 0 (a fresh season means a clean slate for the warning/removal count; `dodgeWins`, like
+ * All-Time Stats, is left untouched). Rejects a name that collides with any existing tab without
+ * making any changes.
  */
 export async function resetLadderEndSeason(newSeasonNameInput: string): Promise<ResetLadderEndSeasonResult> {
   const seasonName = sanitizeSheetTitle(newSeasonNameInput);
@@ -58,6 +60,10 @@ export async function resetLadderEndSeason(newSeasonNameInput: string): Promise<
   await seasonStatsRepo.backfillInactiveEntries(ladder);
   await seasonStatsRepo.startNewSeason(seasonName);
   await pointsStore.resetForNewSeason(seasonName, new Date().toISOString());
+
+  for (const row of ladder) {
+    if (row.dodgeCount > 0) await ladderRepo.setDodgeCount(row.sheetRow, 0);
+  }
 
   const changes = shuffleRepeatedly(ladder);
   for (const change of changes) {

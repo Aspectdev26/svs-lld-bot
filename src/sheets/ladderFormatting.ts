@@ -23,8 +23,9 @@ const COL = {
   discordUserId: 8,
   notes: 9,
   dodges: 10,
+  dodgesAgainst: 11,
 } as const;
-const COLUMN_COUNT = 11;
+const COLUMN_COUNT = 12;
 
 const BODY_BG: Color = { red: 0.812, green: 0.886, blue: 0.953 }; // #cfe2f3
 
@@ -61,6 +62,7 @@ const COLUMN_WIDTHS: Partial<Record<keyof typeof COL, number>> = {
   discordUserId: 170,
   notes: 200,
   dodges: 70,
+  dodgesAgainst: 90,
 };
 
 /** Conditional format rules only accept bold/italic/strikethrough/foregroundColor — no size/family. */

@@ -17,6 +17,7 @@ function row(rank: number): LadderRow {
     opponentRank: "",
     notes: "",
     dodgeWins: 0,
+    dodgeCount: 0,
   };
 }
 

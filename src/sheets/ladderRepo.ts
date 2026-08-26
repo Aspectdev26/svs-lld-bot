@@ -23,10 +23,11 @@ export const LADDER_HEADERS = [
   "discord userid",
   "Notes",
   "Dodges",
+  "DodgesAgainst",
 ];
 
 function rowFromValues(sheetRow: number, values: string[]): LadderRow {
-  const [rank, characterName, build, element, discordName, status, challengeDate, opponentRank, discordUserId, notes, dodgeWins] =
+  const [rank, characterName, build, element, discordName, status, challengeDate, opponentRank, discordUserId, notes, dodgeWins, dodgeCount] =
     values;
   return {
     sheetRow,
@@ -41,6 +42,7 @@ function rowFromValues(sheetRow: number, values: string[]): LadderRow {
     discordUserId: discordUserId ?? "",
     notes: notes ?? "",
     dodgeWins: Number.parseInt(dodgeWins, 10) || 0,
+    dodgeCount: Number.parseInt(dodgeCount, 10) || 0,
     joinedAt: "", // not shown in this layout; retained on the type for internal bookkeeping only
   };
 }
@@ -58,12 +60,13 @@ function toValues(entry: Omit<LadderRow, "sheetRow">): (string | number)[] {
     entry.discordUserId,
     entry.notes,
     entry.dodgeWins,
+    entry.dodgeCount,
   ];
 }
 
 /** All ladder rows, ordered by their current rank ascending (rank 1 = top). */
 export async function getLadder(): Promise<LadderRow[]> {
-  const values = await readSheetRange(`${LADDER_SHEET}!A2:K`);
+  const values = await readSheetRange(`${LADDER_SHEET}!A2:L`);
   const rows = values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is LadderRow => r !== null);
@@ -122,6 +125,11 @@ export async function clearChallengeInfo(sheetRow: number): Promise<void> {
 
 export async function setDodgeWins(sheetRow: number, count: number): Promise<void> {
   await updateSheetCell(LADDER_SHEET, sheetRow, "K", count);
+}
+
+/** Running count of approved dodges *against* this entry — see the `dodgeCount` doc on LadderRow. */
+export async function setDodgeCount(sheetRow: number, count: number): Promise<void> {
+  await updateSheetCell(LADDER_SHEET, sheetRow, "L", count);
 }
 
 export async function overwriteRow(row: LadderRow): Promise<void> {

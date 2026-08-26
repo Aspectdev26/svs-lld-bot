@@ -33,6 +33,9 @@ vi.mock("../src/domain/rankingService.js", async () => {
   const actual = await vi.importActual<typeof import("../src/domain/rankingService.js")>("../src/domain/rankingService.js");
   return { ...actual, shuffleRanks: vi.fn() };
 });
+vi.mock("../src/sheets/ladderFormatting.js", () => ({
+  applyLadderFormatting: vi.fn().mockResolvedValue(undefined),
+}));
 
 import * as ladderRepo from "../src/sheets/ladderRepo.js";
 import * as matchesRepo from "../src/sheets/matchesRepo.js";

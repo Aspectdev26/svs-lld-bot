@@ -16,22 +16,36 @@ import { RANK1_SHEET, RANK1_HEADERS } from "./sheets/rank1Repo.js";
 import { SEASON_STATS_SHEET, SEASON_STATS_HEADERS } from "./sheets/seasonStatsRepo.js";
 import { SIGNUP_REQUESTS_SHEET, SIGNUP_REQUESTS_HEADERS } from "./sheets/signupRequestsRepo.js";
 import { BANNED_SHEET, BANNED_HEADERS } from "./sheets/bannedRepo.js";
-import { SETTINGS_SHEET, SETTINGS_HEADERS } from "./sheets/settingsRepo.js";
+import { SETTINGS_SHEET, SETTINGS_HEADERS, getSettings } from "./sheets/settingsRepo.js";
 import { applyLadderFormatting } from "./sheets/ladderFormatting.js";
+import { applyStandardTabFormatting } from "./sheets/sheetFormatting.js";
+
+const NON_LADDER_TABS = [
+  { name: MATCHES_SHEET, headers: MATCHES_HEADERS },
+  { name: DODGES_SHEET, headers: DODGES_HEADERS },
+  { name: RANK1_SHEET, headers: RANK1_HEADERS },
+  { name: SEASON_STATS_SHEET, headers: SEASON_STATS_HEADERS },
+  { name: SIGNUP_REQUESTS_SHEET, headers: SIGNUP_REQUESTS_HEADERS },
+  { name: BANNED_SHEET, headers: BANNED_HEADERS },
+  { name: SETTINGS_SHEET, headers: SETTINGS_HEADERS },
+];
 
 async function main() {
-  await ensureSheetTabs([
-    { name: LADDER_SHEET, headers: LADDER_HEADERS },
-    { name: MATCHES_SHEET, headers: MATCHES_HEADERS },
-    { name: DODGES_SHEET, headers: DODGES_HEADERS },
-    { name: RANK1_SHEET, headers: RANK1_HEADERS },
-    { name: SEASON_STATS_SHEET, headers: SEASON_STATS_HEADERS },
-    { name: SIGNUP_REQUESTS_SHEET, headers: SIGNUP_REQUESTS_HEADERS },
-    { name: BANNED_SHEET, headers: BANNED_HEADERS },
-    { name: SETTINGS_SHEET, headers: SETTINGS_HEADERS },
-  ]);
+  await ensureSheetTabs([{ name: LADDER_SHEET, headers: LADDER_HEADERS }, ...NON_LADDER_TABS]);
 
   await applyLadderFormatting().catch((err) => console.error("Failed to apply Ladder sheet formatting:", err));
+  for (const tab of NON_LADDER_TABS) {
+    await applyStandardTabFormatting(tab.name, tab.headers.length).catch((err) =>
+      console.error(`Failed to apply formatting to "${tab.name}" tab:`, err),
+    );
+  }
+  // The tab the current season's stats live in is dynamically named — not in the static list above.
+  const { currentSeasonName } = await getSettings();
+  if (currentSeasonName) {
+    await applyStandardTabFormatting(currentSeasonName, SEASON_STATS_HEADERS.length).catch((err) =>
+      console.error(`Failed to apply formatting to "${currentSeasonName}" tab:`, err),
+    );
+  }
 
   const client = createClient();
   registerReadyEvent(client);

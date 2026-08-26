@@ -1,9 +1,15 @@
 import type { sheets_v4 } from "googleapis";
 import { batchUpdateSpreadsheet, getSheetMetaByName } from "./sheetsClient.js";
 import { LADDER_SHEET } from "./ladderRepo.js";
-
-type Color = { red: number; green: number; blue: number };
-type Request = sheets_v4.Schema$Request;
+import {
+  BLACK,
+  BODY_FONT_SIZE,
+  gridRange,
+  standardTabRequests,
+  textFormat,
+  type Color,
+  type Request,
+} from "./sheetFormatting.js";
 
 const COL = {
   rank: 0,
@@ -19,11 +25,8 @@ const COL = {
   dodges: 10,
 } as const;
 const COLUMN_COUNT = 11;
-const MAX_ROWS = 1000; // generous headroom for ladder growth
 
-const HEADER_BG: Color = { red: 0.788, green: 0.855, blue: 0.973 }; // #c9daf8
 const BODY_BG: Color = { red: 0.812, green: 0.886, blue: 0.953 }; // #cfe2f3
-const BLACK: Color = { red: 0, green: 0, blue: 0 };
 
 const ELEMENT_COLORS: Record<string, Color> = {
   Cold: { red: 0.643, green: 0.761, blue: 0.957 }, // #a4c2f4
@@ -37,7 +40,8 @@ const STATUS_COLORS: Record<string, { bg: Color; text: Color }> = {
   Vacation: { bg: { red: 1, green: 0.851, blue: 0.4 }, text: { red: 0.498, green: 0.376, blue: 0 } }, // #ffd966 / #7f6000
 };
 
-const RANK_COLORS: Record<number, Color> = {
+/** Subtle badge tint for the Rank cell itself (not the whole row) on ranks 1-3. */
+const RANK_BADGE_COLORS: Record<number, Color> = {
   1: { red: 0.945, green: 0.761, blue: 0.196 }, // gold
   2: { red: 0.827, green: 0.827, blue: 0.827 }, // silver
   3: { red: 0.878, green: 0.675, blue: 0.412 }, // bronze
@@ -59,14 +63,6 @@ const COLUMN_WIDTHS: Partial<Record<keyof typeof COL, number>> = {
   dodges: 70,
 };
 
-function range(sheetId: number, startCol: number, endCol: number, startRow = 0, endRow = MAX_ROWS): sheets_v4.Schema$GridRange {
-  return { sheetId, startRowIndex: startRow, endRowIndex: endRow, startColumnIndex: startCol, endColumnIndex: endCol };
-}
-
-function textFormat(color: Color, bold: boolean, fontSize = 10): sheets_v4.Schema$TextFormat {
-  return { foregroundColor: color, bold, fontSize, fontFamily: "Arial" };
-}
-
 /** Conditional format rules only accept bold/italic/strikethrough/foregroundColor — no size/family. */
 function conditionalTextFormat(color: Color, bold: boolean): sheets_v4.Schema$TextFormat {
   return { foregroundColor: color, bold };
@@ -77,7 +73,7 @@ function conditionalTextEq(sheetId: number, col: number, value: string, bg: Colo
     addConditionalFormatRule: {
       index: 0,
       rule: {
-        ranges: [range(sheetId, col, col + 1, 1)],
+        ranges: [gridRange(sheetId, col, col + 1, 1)],
         booleanRule: {
           condition: { type: "TEXT_EQ", values: [{ userEnteredValue: value }] },
           format: { backgroundColor: bg, textFormat: conditionalTextFormat(text, bold) },
@@ -92,7 +88,7 @@ function conditionalNumberEq(sheetId: number, col: number, value: number, bg: Co
     addConditionalFormatRule: {
       index: 0,
       rule: {
-        ranges: [range(sheetId, col, col + 1, 1)],
+        ranges: [gridRange(sheetId, col, col + 1, 1)],
         booleanRule: {
           condition: { type: "NUMBER_EQ", values: [{ userEnteredValue: String(value) }] },
           format: { backgroundColor: bg, textFormat: conditionalTextFormat(BLACK, true) },
@@ -103,10 +99,13 @@ function conditionalNumberEq(sheetId: number, col: number, value: number, bg: Co
 }
 
 /**
- * Applies the reference-sheet look (header/body colors, column widths, frozen header, and
- * conditional coloring for Rank/element/Status) to the Ladder tab. Idempotent — skipped if the
- * tab already has conditional format rules from a previous run, so re-running on every startup
- * never accumulates duplicate rules.
+ * Applies the reference-sheet look (shared header/border/font styling, plus Ladder-specific body
+ * color, column widths, and conditional coloring for Rank/element/Status) to the Ladder tab. Safe
+ * to re-run any time — cell-level styling requests just overwrite in place, and any existing
+ * conditional format rules are deleted and recreated fresh each time rather than skipped or
+ * duplicated, so a sheet that's drifted (wrong colors, manually cleared formatting, a reset, etc.)
+ * always gets corrected. Call this after any bulk operation that could plausibly disturb the
+ * sheet's look, not just on startup.
  */
 export async function applyLadderFormatting(): Promise<void> {
   const meta = await getSheetMetaByName(LADDER_SHEET);
@@ -115,19 +114,15 @@ export async function applyLadderFormatting(): Promise<void> {
     console.error(`Could not find sheetId for "${LADDER_SHEET}" tab — skipping formatting.`);
     return;
   }
-  if ((meta?.conditionalFormats?.length ?? 0) >= 6) {
-    return; // already applied in a previous run
+
+  const requests: Request[] = [...standardTabRequests(sheetId, COLUMN_COUNT)];
+
+  // Delete any existing conditional format rules first (highest index first, since removing one
+  // shifts the rest down) so re-running this never accumulates or duplicates rules.
+  const existingRuleCount = meta?.conditionalFormats?.length ?? 0;
+  for (let i = existingRuleCount - 1; i >= 0; i--) {
+    requests.push({ deleteConditionalFormatRule: { sheetId, index: i } });
   }
-
-  const requests: Request[] = [];
-
-  // Frozen header row + visible gridlines.
-  requests.push({
-    updateSheetProperties: {
-      properties: { sheetId, gridProperties: { frozenRowCount: 1, hideGridlines: false } },
-      fields: "gridProperties.frozenRowCount,gridProperties.hideGridlines",
-    },
-  });
 
   // Column widths.
   for (const [key, width] of Object.entries(COLUMN_WIDTHS)) {
@@ -141,52 +136,46 @@ export async function applyLadderFormatting(): Promise<void> {
     });
   }
 
-  // Header row style.
-  requests.push({
-    repeatCell: {
-      range: range(sheetId, 0, COLUMN_COUNT, 0, 1),
-      cell: {
-        userEnteredFormat: {
-          backgroundColor: HEADER_BG,
-          textFormat: textFormat(BLACK, true, 11),
-          horizontalAlignment: "LEFT",
-          verticalAlignment: "MIDDLE",
-        },
-      },
-      fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)",
-    },
-  });
   // Rank header is right-aligned to match the numeric column below it.
   requests.push({
     repeatCell: {
-      range: range(sheetId, COL.rank, COL.rank + 1, 0, 1),
+      range: gridRange(sheetId, COL.rank, COL.rank + 1, 0, 1),
       cell: { userEnteredFormat: { horizontalAlignment: "RIGHT" } },
       fields: "userEnteredFormat.horizontalAlignment",
     },
   });
 
-  // Base body formatting: uniform background + default text style across the whole data area.
+  // Body background (overrides the shared base's plain white with the reference sheet's light blue).
   requests.push({
     repeatCell: {
-      range: range(sheetId, 0, COLUMN_COUNT, 1),
-      cell: { userEnteredFormat: { backgroundColor: BODY_BG, textFormat: textFormat(BLACK, false) } },
-      fields: "userEnteredFormat(backgroundColor,textFormat)",
+      range: gridRange(sheetId, 0, COLUMN_COUNT, 1),
+      cell: { userEnteredFormat: { backgroundColor: BODY_BG } },
+      fields: "userEnteredFormat.backgroundColor",
     },
   });
 
-  // Rank column: bold, right-aligned numbers.
+  // Rank column: bold, right-aligned numbers. A custom number format prefixes 🥇/🥈 for ranks 1-2 —
+  // a Sheets number format only allows two bracketed conditions, so rank 3 gets its bronze badge
+  // via the conditional fill below instead. Display-only: the underlying numeric value (and every
+  // parseInt() read elsewhere) is completely unaffected.
   requests.push({
     repeatCell: {
-      range: range(sheetId, COL.rank, COL.rank + 1, 1),
-      cell: { userEnteredFormat: { horizontalAlignment: "RIGHT", textFormat: textFormat(BLACK, true) } },
-      fields: "userEnteredFormat(horizontalAlignment,textFormat)",
+      range: gridRange(sheetId, COL.rank, COL.rank + 1, 1),
+      cell: {
+        userEnteredFormat: {
+          horizontalAlignment: "RIGHT",
+          textFormat: textFormat(BLACK, true, BODY_FONT_SIZE),
+          numberFormat: { type: "NUMBER", pattern: '[=1]"🥇 "0;[=2]"🥈 "0;0' },
+        },
+      },
+      fields: "userEnteredFormat(horizontalAlignment,textFormat,numberFormat)",
     },
   });
 
   // Name column: bold.
   requests.push({
     repeatCell: {
-      range: range(sheetId, COL.name, COL.name + 1, 1),
+      range: gridRange(sheetId, COL.name, COL.name + 1, 1),
       cell: { userEnteredFormat: { textFormat: textFormat(BLACK, true) } },
       fields: "userEnteredFormat.textFormat",
     },
@@ -195,7 +184,7 @@ export async function applyLadderFormatting(): Promise<void> {
   // discUser column: link-blue text.
   requests.push({
     repeatCell: {
-      range: range(sheetId, COL.discUser, COL.discUser + 1, 1),
+      range: gridRange(sheetId, COL.discUser, COL.discUser + 1, 1),
       cell: { userEnteredFormat: { textFormat: textFormat(DISCUSER_TEXT, false) } },
       fields: "userEnteredFormat.textFormat",
     },
@@ -204,7 +193,7 @@ export async function applyLadderFormatting(): Promise<void> {
   // Opp# centered.
   requests.push({
     repeatCell: {
-      range: range(sheetId, COL.oppNum, COL.oppNum + 1, 1),
+      range: gridRange(sheetId, COL.oppNum, COL.oppNum + 1, 1),
       cell: { userEnteredFormat: { horizontalAlignment: "CENTER" } },
       fields: "userEnteredFormat.horizontalAlignment",
     },
@@ -217,7 +206,7 @@ export async function applyLadderFormatting(): Promise<void> {
   for (const [status, { bg, text }] of Object.entries(STATUS_COLORS)) {
     requests.push(conditionalTextEq(sheetId, COL.status, status, bg, text));
   }
-  for (const [rank, color] of Object.entries(RANK_COLORS)) {
+  for (const [rank, color] of Object.entries(RANK_BADGE_COLORS)) {
     requests.push(conditionalNumberEq(sheetId, COL.rank, Number(rank), color));
   }
 

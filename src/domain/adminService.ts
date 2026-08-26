@@ -7,6 +7,7 @@ import { applyManualRank, compactRanks, shuffleRanks, type RankChange } from "./
 import { cancelMatch } from "./matchService.js";
 import { syncToCurrentHolder } from "./rank1Tracker.js";
 import { sanitizeSheetTitle } from "../util/sanitizeSheetTitle.js";
+import { applyLadderFormatting } from "../sheets/ladderFormatting.js";
 import type { LadderRow, MatchRow } from "../types.js";
 
 export type ResetLadderEndSeasonResult =
@@ -67,6 +68,7 @@ export async function resetLadderEndSeason(newSeasonNameInput: string): Promise<
     return change ? { ...r, rank: change.newRank } : r;
   });
   await syncToCurrentHolder(updatedLadder);
+  await applyLadderFormatting().catch((err) => console.error("Failed to reapply Ladder formatting after reset:", err));
 
   return { ok: true, changedCount: changes.length, cancelledMatches: pending, newSeasonName: seasonName };
 }
@@ -89,6 +91,7 @@ export async function shuffleLadderRanks(): Promise<ShuffleLadderRanksResult> {
     return change ? { ...r, rank: change.newRank } : r;
   });
   await syncToCurrentHolder(updatedLadder);
+  await applyLadderFormatting().catch((err) => console.error("Failed to reapply Ladder formatting after shuffle:", err));
 
   return { changedCount: changes.length };
 }

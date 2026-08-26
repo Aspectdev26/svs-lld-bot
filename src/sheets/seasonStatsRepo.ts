@@ -1,5 +1,6 @@
 import { addSheetTab, appendSheetRow, getSheetMetaByName, readSheetRange, updateSheetRow, writeSheetRows } from "./sheetsClient.js";
 import * as settingsRepo from "./settingsRepo.js";
+import { applyStandardTabFormatting } from "./sheetFormatting.js";
 import type { Build, Element, LadderRow, SeasonStatsRow } from "../types.js";
 
 /** Legacy/fallback tab name, used until the first reset under the named-season-tab scheme. */
@@ -126,4 +127,7 @@ export async function startNewSeason(seasonName: string): Promise<void> {
   await addSheetTab(seasonName);
   await writeSheetRows(seasonName, 1, [SEASON_STATS_HEADERS]);
   await settingsRepo.setCurrentSeasonName(seasonName);
+  await applyStandardTabFormatting(seasonName, SEASON_STATS_HEADERS.length).catch((err) =>
+    console.error(`Failed to apply formatting to new "${seasonName}" tab:`, err),
+  );
 }

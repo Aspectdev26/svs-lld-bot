@@ -52,6 +52,7 @@ import {
   RANK_SHUFFLE_RESOLVE_IDS,
 } from "../components/admin/adminRankShuffle.js";
 import { handlePauseToggle } from "../components/admin/adminPause.js";
+import { handlePointsStandingButton } from "../components/admin/adminPointsStanding.js";
 import { handleGuideButton } from "../components/admin/adminGuide.js";
 import {
   handleCancelMatchStart,
@@ -190,6 +191,8 @@ export function registerInteractionEvent(client: Client): void {
           await handleRankShuffleResolve(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.pauseToggle) {
           await handlePauseToggle(interaction);
+        } else if (interaction.customId === ADMIN_BUTTON_IDS.pointsStanding) {
+          await handlePointsStandingButton(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.guide) {
           await handleGuideButton(interaction);
         } else if (REGISTER_APPROVE_DENY_PREFIXES.some((p) => interaction.customId.startsWith(p))) {

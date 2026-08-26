@@ -107,6 +107,7 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
 
   await interaction.deferReply({ ephemeral: true });
   await matchesRepo.setExtensionPending(match.sheetRow, true);
+  await matchesRepo.setExtensionRequestedBy(match.sheetRow, interaction.user.id);
   await interaction.editReply({ content: "Extension request submitted to League Managers for review." });
   scheduleReplyCleanup(interaction);
 

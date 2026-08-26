@@ -1,6 +1,8 @@
 import { EmbedBuilder, type ButtonInteraction, type GuildMember, type TextChannel } from "discord.js";
 import { config } from "../../config.js";
 import * as matchesRepo from "../../sheets/matchesRepo.js";
+import * as ladderRepo from "../../sheets/ladderRepo.js";
+import * as pointsService from "../../domain/pointsService.js";
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation } from "../notify.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
@@ -34,6 +36,15 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
     await matchesRepo.setExpiresAt(match.sheetRow, newExpiresAt);
     await matchesRepo.setExtensionPending(match.sheetRow, false);
     await matchesRepo.setWarningSentAt(match.sheetRow, ""); // let the scheduler re-warn ahead of the new expiry
+
+    if (match.extensionRequestedByUserId) {
+      const requesterElement =
+        match.extensionRequestedByUserId === match.challengerUserId ? match.challengerElement : match.defenderElement;
+      const requesterEntry = await ladderRepo.findEntry(match.extensionRequestedByUserId, requesterElement);
+      if (requesterEntry) {
+        await pointsService.recordExtensionRequested(requesterEntry.discordUserId, requesterEntry.discordName);
+      }
+    }
 
     await interaction.message.delete().catch(() => undefined);
     await postAutoDeletingConfirmation(interaction.client, `✅ Extension approved by <@${interaction.user.id}>.`);

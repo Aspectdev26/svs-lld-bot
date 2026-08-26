@@ -4,3 +4,4 @@ dist/
 *.log
 service-account.json
 Thumbs.db
+data/

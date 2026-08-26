@@ -4,6 +4,7 @@ import * as ladderRepo from "../sheets/ladderRepo.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
 import { swapRanks } from "./rankingService.js";
 import * as rank1Tracker from "./rank1Tracker.js";
+import * as pointsService from "./pointsService.js";
 import { formatChallengeDate } from "../util/formatDate.js";
 import type { Rank1Update } from "./rank1Tracker.js";
 import type { Element, LadderRow, MatchRow } from "../types.js";
@@ -78,8 +79,10 @@ export async function createMatch(challenger: LadderRow, defender: LadderRow): P
     channelId: "",
     extensionPending: false,
     cancelRequestedByUserId: "",
+    extensionRequestedByUserId: "",
   };
   await matchesRepo.addMatch(match);
+  await pointsService.recordChallengeIssued(challenger.discordUserId, challenger.discordName, match.createdAt);
 
   const challengeDateDisplay = formatChallengeDate(match.createdAt);
   await ladderRepo.setChallengeInfo(challenger.sheetRow, defender.rank, challengeDateDisplay);
@@ -151,6 +154,13 @@ export async function reportWin(reporterUserId: string, matchId: string, winnerU
   match.resolvedAt = new Date().toISOString();
   await matchesRepo.updateMatch(match);
 
+  if (challengerEntry && defenderEntry) {
+    await Promise.all([
+      pointsService.recordMatchCompleted(challengerEntry.discordUserId, challengerEntry.discordName, match.createdAt, match.resolvedAt),
+      pointsService.recordMatchCompleted(defenderEntry.discordUserId, defenderEntry.discordName, match.createdAt, match.resolvedAt),
+    ]);
+  }
+
   return { ok: true, match, winnerMovedUp, rank1Update };
 }
 
@@ -159,6 +169,11 @@ export async function expireMatch(match: MatchRow): Promise<void> {
   match.resolvedAt = new Date().toISOString();
   await matchesRepo.updateMatch(match);
   await clearLadderChallengeDisplay(match);
+
+  const challengerEntry = await ladderRepo.findEntry(match.challengerUserId, match.challengerElement);
+  if (challengerEntry) {
+    await pointsService.recordMatchExpired(challengerEntry.discordUserId, challengerEntry.discordName);
+  }
 }
 
 /** Admin override / ban side-effect: voids a match with no rank change. */
@@ -190,6 +205,10 @@ export async function applyDodgeWin(match: MatchRow): Promise<Rank1Update> {
     // Rank changes only update the Rank value in place — re-sort so the raw sheet stays in
     // visual top-to-bottom rank order.
     await ladderRepo.sortLadderByRank();
+
+    // A dodge win isn't "activity" (no match was actually played), so only the dodged-against
+    // side is scored — no completion/speed bonus for either participant.
+    await pointsService.recordDodgeAgainst(defenderEntry.discordUserId, defenderEntry.discordName);
   }
   match.status = "DodgeApproved";
   match.winnerUserId = match.challengerUserId;

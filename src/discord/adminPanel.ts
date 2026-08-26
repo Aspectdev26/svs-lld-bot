@@ -13,6 +13,7 @@ export const ADMIN_BUTTON_IDS = {
   guide: "admin_guide_show",
   rankShuffle: "admin_rankshuffle_start",
   pauseToggle: "admin_pause_toggle",
+  pointsStanding: "admin_points_standing",
 } as const;
 
 function buildPanelContent() {
@@ -35,7 +36,8 @@ function buildPanelContent() {
         "Warns you first if there are active challenges. Requires confirmation.\n" +
         "**Pause/Resume Ladder** — pausing blocks new challenges from being issued and freezes the timers on " +
         "already-active matches; resuming shifts those timers forward by however long the ladder was paused.\n" +
-        "**Guide** — pulls up the full League Manager reference (channels, rules, how-tos), visible only to you.",
+        "**Guide** — pulls up the full League Manager reference (channels, rules, how-tos), visible only to you.\n" +
+        "**Points Standing** — this season's activity standings, visible only to you.",
     )
     .setColor(0x992d22);
 
@@ -57,6 +59,7 @@ function buildPanelContent() {
   const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.rankShuffle).setLabel("Shuffle Ranks").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.pauseToggle).setLabel("Pause/Resume Ladder").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.pointsStanding).setLabel("Points Standing").setStyle(ButtonStyle.Primary),
   );
 
   return { embeds: [embed], components: [row1, row2, row3, row4] };

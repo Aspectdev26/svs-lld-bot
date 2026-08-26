@@ -2,6 +2,7 @@ import * as ladderRepo from "../sheets/ladderRepo.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
 import * as bannedRepo from "../sheets/bannedRepo.js";
 import * as seasonStatsRepo from "../sheets/seasonStatsRepo.js";
+import * as pointsStore from "./pointsStore.js";
 import { ALL_ELEMENTS, type BanScope } from "../sheets/bannedRepo.js";
 import { applyManualRank, compactRanks, shuffleRanks, type RankChange } from "./rankingService.js";
 import { cancelMatch } from "./matchService.js";
@@ -56,6 +57,7 @@ export async function resetLadderEndSeason(newSeasonNameInput: string): Promise<
   const ladder = await ladderRepo.getLadder();
   await seasonStatsRepo.backfillInactiveEntries(ladder);
   await seasonStatsRepo.startNewSeason(seasonName);
+  await pointsStore.resetForNewSeason(seasonName, new Date().toISOString());
 
   const changes = shuffleRepeatedly(ladder);
   for (const change of changes) {

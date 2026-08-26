@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "register-commands": "tsx src/discord/registerCommands.ts",
+    "backfill-points": "tsx src/scripts/backfillSeasonPoints.ts",
     "test": "vitest run"
   },
   "engines": {

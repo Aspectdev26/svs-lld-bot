@@ -64,6 +64,8 @@ export interface MatchRow {
   extensionPending: boolean;
   /** Discord user ID of whichever participant first requested to cancel this match; blank if none. Both participants must request to actually cancel. */
   cancelRequestedByUserId: string;
+  /** Discord user ID of whoever most recently requested an extension on this match; blank if none yet. */
+  extensionRequestedByUserId: string;
 }
 
 export const DODGE_STATUSES = ["Pending", "Approved", "Denied"] as const;

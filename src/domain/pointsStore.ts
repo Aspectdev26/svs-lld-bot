@@ -41,15 +41,32 @@ async function save(data: PointsData): Promise<void> {
   await rename(tmpFile, DATA_FILE);
 }
 
+// Callers like matchService.reportWin fire two addPoints() calls concurrently (challenger +
+// defender via Promise.all). Without serializing, both load-modify-save cycles race on the same
+// tmp file — interleaved writes could corrupt it, and the second save can silently clobber the
+// first's update (lost update). Every load+mutate+save cycle below is queued through this so only
+// one is ever in flight at a time.
+let writeQueue: Promise<unknown> = Promise.resolve();
+function enqueue<T>(fn: () => Promise<T>): Promise<T> {
+  const result = writeQueue.then(fn, fn);
+  writeQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
 /** Adds (or subtracts) points for one player this season, upserting their record and refreshing their display name. */
 export async function addPoints(discordUserId: string, discordName: string, delta: number): Promise<void> {
-  const data = await load();
-  const existing = data.players[discordUserId];
-  data.players[discordUserId] = {
-    discordName,
-    points: (existing?.points ?? 0) + delta,
-  };
-  await save(data);
+  await enqueue(async () => {
+    const data = await load();
+    const existing = data.players[discordUserId];
+    data.players[discordUserId] = {
+      discordName,
+      points: (existing?.points ?? 0) + delta,
+    };
+    await save(data);
+  });
 }
 
 /** Current season's standings, sorted highest points first. */
@@ -62,14 +79,16 @@ export async function getStandings(): Promise<StandingsEntry[]> {
 
 /** Wipes all standings and starts tracking a new season, mirroring the SeasonStats tab reset. */
 export async function resetForNewSeason(seasonName: string, seasonStartedAt: string): Promise<void> {
-  await save({ seasonName, seasonStartedAt, players: {} });
+  await enqueue(() => save({ seasonName, seasonStartedAt, players: {} }));
 }
 
 /** Zeroes one player's current-season points (e.g. full removal after an unreturned Extended Vacation). No-op if they have no record. */
 export async function resetPlayer(discordUserId: string): Promise<void> {
-  const data = await load();
-  const existing = data.players[discordUserId];
-  if (!existing) return;
-  data.players[discordUserId] = { ...existing, points: 0 };
-  await save(data);
+  await enqueue(async () => {
+    const data = await load();
+    const existing = data.players[discordUserId];
+    if (!existing) return;
+    data.players[discordUserId] = { ...existing, points: 0 };
+    await save(data);
+  });
 }

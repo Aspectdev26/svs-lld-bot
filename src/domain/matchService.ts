@@ -165,12 +165,19 @@ export async function reportWin(reporterUserId: string, matchId: string, winnerU
   await matchesRepo.updateMatch(match);
 
   if (challengerEntry && defenderEntry) {
-    await Promise.all([
-      pointsService.recordMatchCompleted(challengerEntry.discordUserId, challengerEntry.discordName, match.createdAt, match.resolvedAt),
-      pointsService.recordMatchCompleted(defenderEntry.discordUserId, defenderEntry.discordName, match.createdAt, match.resolvedAt),
-      decrementDodgeCountIfAny(challengerEntry),
-      decrementDodgeCountIfAny(defenderEntry),
-    ]);
+    // The match result above is already committed. Points/dodge-count bookkeeping is secondary —
+    // a failure here (e.g. a corrupt points store) must not throw out of reportWin, since that
+    // would stop the caller from posting the result announcement and closing the match channel.
+    try {
+      await Promise.all([
+        pointsService.recordMatchCompleted(challengerEntry.discordUserId, challengerEntry.discordName, match.createdAt, match.resolvedAt),
+        pointsService.recordMatchCompleted(defenderEntry.discordUserId, defenderEntry.discordName, match.createdAt, match.resolvedAt),
+        decrementDodgeCountIfAny(challengerEntry),
+        decrementDodgeCountIfAny(defenderEntry),
+      ]);
+    } catch (err) {
+      console.error(`Points/dodge-count bookkeeping failed for match ${match.matchId}:`, err);
+    }
   }
 
   return { ok: true, match, winnerMovedUp, rank1Update };

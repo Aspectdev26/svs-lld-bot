@@ -27,7 +27,7 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "entries or anyone on Vacation. Opens a private match channel (the two players + League Managers) with " +
         "Report Win / Request Dodge / Request Extension. 72h to resolve, warned at the 24h mark.\n\n" +
         "**Post-loss cooldown** → after a reported loss, that exact character can't re-challenge the exact character " +
-        "it lost to again for 24h. Only applies to that one matchup — every other target is unaffected.\n\n" +
+        "it lost to again for 12h. Only applies to that one matchup — every other target is unaffected.\n\n" +
         "**Report Win** → either player can report; they pick the actual winner from a dropdown (nothing " +
         "pre-selected). Challenger wins → ranks swap. Defender wins → nothing changes.\n\n" +
         "**Dodge** → requestable once a match has sat 24h with no result, with a screenshot attached. Comes here " +

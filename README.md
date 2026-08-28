@@ -87,7 +87,7 @@ requests with screenshot evidence.
   an immediate "you're not registered" reply rather than the button silently doing nothing or being invisible to
   them — that's the practical equivalent of "not accessible" the platform allows.
 - **Post-loss cooldown**: after a reported loss, that specific element-entry can't re-challenge the exact entry it
-  lost to for 24h (`CHALLENGE_COOLDOWN_MS`) — an attempt during the cooldown is rejected with when it lifts. Only a
+  lost to for 12h (`CHALLENGE_COOLDOWN_MS`) — an attempt during the cooldown is rejected with when it lifts. Only a
   reported loss counts (a dodge-approved match always credits the win to its own challenger, so it never triggers
   this), and it's scoped to that specific matchup — other targets are unaffected.
 - **All-time stats**: the `All Time Stats` tab is a permanent, append-only record covering every ladder

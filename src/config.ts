@@ -44,7 +44,7 @@ export const config = {
     dodgeEligibleAfterMs: int("DODGE_ELIGIBLE_AFTER_MS", 24 * 60 * 60 * 1000),
     schedulerIntervalMs: int("SCHEDULER_INTERVAL_MS", 10 * 60 * 1000),
     extensionGrantMs: int("EXTENSION_GRANT_MS", 2 * 24 * 60 * 60 * 1000),
-    challengeCooldownMs: int("CHALLENGE_COOLDOWN_MS", 24 * 60 * 60 * 1000),
+    challengeCooldownMs: int("CHALLENGE_COOLDOWN_MS", 12 * 60 * 60 * 1000),
     vacationExpiryMs: int("VACATION_EXPIRY_MS", 14 * 24 * 60 * 60 * 1000),
     extendedVacationExpiryMs: int("EXTENDED_VACATION_EXPIRY_MS", 30 * 24 * 60 * 60 * 1000),
     /** Lead time before either vacation timer expires that the warning DM/League Manager notice fires. */

@@ -5,11 +5,13 @@ vi.mock("../src/sheets/rank1Repo.js", () => ({
   crownHolder: vi.fn(),
   recordDefend: vi.fn(),
   getCurrentHolderRow: vi.fn(),
+  getAllRows: vi.fn(),
   recordWin: vi.fn(),
   recordLoss: vi.fn(),
   recordDodgeAgainst: vi.fn(),
 }));
 vi.mock("../src/sheets/seasonStatsRepo.js", () => ({
+  loadCache: vi.fn(),
   recordDefend: vi.fn(),
   recordWin: vi.fn(),
   recordLoss: vi.fn(),
@@ -58,13 +60,17 @@ function rank1Row(overrides: Partial<Rank1Row> = {}): Rank1Row {
   };
 }
 
+const seasonCache = { sheetName: "SeasonStats", rows: [] };
+
 beforeEach(() => {
   vi.mocked(rank1Repo.crownHolder).mockReset();
   vi.mocked(rank1Repo.recordDefend).mockReset();
   vi.mocked(rank1Repo.getCurrentHolderRow).mockReset();
+  vi.mocked(rank1Repo.getAllRows).mockReset().mockResolvedValue([]);
   vi.mocked(rank1Repo.recordWin).mockReset();
   vi.mocked(rank1Repo.recordLoss).mockReset();
   vi.mocked(rank1Repo.recordDodgeAgainst).mockReset();
+  vi.mocked(seasonStatsRepo.loadCache).mockReset().mockResolvedValue(seasonCache);
   vi.mocked(seasonStatsRepo.recordDefend).mockReset();
   vi.mocked(seasonStatsRepo.recordWin).mockReset();
   vi.mocked(seasonStatsRepo.recordLoss).mockReset();
@@ -80,10 +86,10 @@ describe("recordMatchResult", () => {
     expect(result).toEqual({ changed: false });
     expect(rank1Repo.crownHolder).not.toHaveBeenCalled();
     expect(rank1Repo.recordDefend).not.toHaveBeenCalled();
-    expect(rank1Repo.recordWin).toHaveBeenCalledWith(challenger);
-    expect(rank1Repo.recordLoss).toHaveBeenCalledWith(defender);
-    expect(seasonStatsRepo.recordWin).toHaveBeenCalledWith(challenger);
-    expect(seasonStatsRepo.recordLoss).toHaveBeenCalledWith(defender);
+    expect(rank1Repo.recordWin).toHaveBeenCalledWith(challenger, []);
+    expect(rank1Repo.recordLoss).toHaveBeenCalledWith(defender, []);
+    expect(seasonStatsRepo.recordWin).toHaveBeenCalledWith(challenger, seasonCache);
+    expect(seasonStatsRepo.recordLoss).toHaveBeenCalledWith(defender, seasonCache);
   });
 
   it("crowns the challenger as new champion and records win/loss when they beat rank 1", async () => {
@@ -94,10 +100,10 @@ describe("recordMatchResult", () => {
 
     expect(result).toEqual({ changed: true, kind: "newChampion", holderName: "Carl" });
     expect(rank1Repo.crownHolder).toHaveBeenCalledWith(challenger);
-    expect(rank1Repo.recordWin).toHaveBeenCalledWith(challenger);
-    expect(rank1Repo.recordLoss).toHaveBeenCalledWith(defender);
-    expect(seasonStatsRepo.recordWin).toHaveBeenCalledWith(challenger);
-    expect(seasonStatsRepo.recordLoss).toHaveBeenCalledWith(defender);
+    expect(rank1Repo.recordWin).toHaveBeenCalledWith(challenger, []);
+    expect(rank1Repo.recordLoss).toHaveBeenCalledWith(defender, []);
+    expect(seasonStatsRepo.recordWin).toHaveBeenCalledWith(challenger, seasonCache);
+    expect(seasonStatsRepo.recordLoss).toHaveBeenCalledWith(defender, seasonCache);
   });
 
   it("increments the defend total (and win/loss) when the current rank-1 holder wins", async () => {
@@ -111,10 +117,10 @@ describe("recordMatchResult", () => {
     expect(rank1Repo.recordDefend).toHaveBeenCalledWith(defender);
     expect(seasonStatsRepo.recordDefend).toHaveBeenCalledWith(defender);
     expect(rank1Repo.crownHolder).not.toHaveBeenCalled();
-    expect(rank1Repo.recordWin).toHaveBeenCalledWith(defender);
-    expect(rank1Repo.recordLoss).toHaveBeenCalledWith(challenger);
-    expect(seasonStatsRepo.recordWin).toHaveBeenCalledWith(defender);
-    expect(seasonStatsRepo.recordLoss).toHaveBeenCalledWith(challenger);
+    expect(rank1Repo.recordWin).toHaveBeenCalledWith(defender, []);
+    expect(rank1Repo.recordLoss).toHaveBeenCalledWith(challenger, []);
+    expect(seasonStatsRepo.recordWin).toHaveBeenCalledWith(defender, seasonCache);
+    expect(seasonStatsRepo.recordLoss).toHaveBeenCalledWith(challenger, seasonCache);
   });
 
   it("still records a first defend when the tracker was empty or out of sync", async () => {

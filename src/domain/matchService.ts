@@ -146,13 +146,14 @@ export async function reportWin(reporterUserId: string, matchId: string, winnerU
 
     if (winnerIsChallenger) {
       const { challengerRank, defenderRank } = swapRanks(challengerEntry, defenderEntry);
-      await ladderRepo.setRank(challengerEntry.sheetRow, challengerRank);
-      await ladderRepo.setRank(defenderEntry.sheetRow, defenderRank);
+      await ladderRepo.setRanks([
+        { sheetRow: challengerEntry.sheetRow, newRank: challengerRank },
+        { sheetRow: defenderEntry.sheetRow, newRank: defenderRank },
+      ]);
       winnerMovedUp = true;
     }
 
-    await ladderRepo.clearChallengeInfo(challengerEntry.sheetRow);
-    await ladderRepo.clearChallengeInfo(defenderEntry.sheetRow);
+    await ladderRepo.clearChallengeInfoForRows([challengerEntry.sheetRow, defenderEntry.sheetRow]);
 
     // Rank changes only update the Rank value in place — re-sort so the raw sheet stays in
     // visual top-to-bottom rank order.
@@ -222,13 +223,14 @@ export async function applyDodgeWin(match: MatchRow): Promise<ApplyDodgeWinResul
   if (challengerEntry && defenderEntry) {
     rank1Update = await rank1Tracker.recordMatchResult(defenderEntry.rank, defenderEntry, challengerEntry, true);
     const { challengerRank, defenderRank } = swapRanks(challengerEntry, defenderEntry);
-    await ladderRepo.setRank(challengerEntry.sheetRow, challengerRank);
-    await ladderRepo.setRank(defenderEntry.sheetRow, defenderRank);
-    await ladderRepo.setDodgeWins(challengerEntry.sheetRow, challengerEntry.dodgeWins + 1);
     defenderDodgeCount = defenderEntry.dodgeCount + 1;
+    await ladderRepo.setRanks([
+      { sheetRow: challengerEntry.sheetRow, newRank: challengerRank },
+      { sheetRow: defenderEntry.sheetRow, newRank: defenderRank },
+    ]);
+    await ladderRepo.setDodgeWins(challengerEntry.sheetRow, challengerEntry.dodgeWins + 1);
     await ladderRepo.setDodgeCount(defenderEntry.sheetRow, defenderDodgeCount);
-    await ladderRepo.clearChallengeInfo(challengerEntry.sheetRow);
-    await ladderRepo.clearChallengeInfo(defenderEntry.sheetRow);
+    await ladderRepo.clearChallengeInfoForRows([challengerEntry.sheetRow, defenderEntry.sheetRow]);
 
     // Rank changes only update the Rank value in place — re-sort so the raw sheet stays in
     // visual top-to-bottom rank order.

@@ -66,9 +66,7 @@ export async function resetLadderEndSeason(newSeasonNameInput: string): Promise<
   }
 
   const changes = shuffleRepeatedly(ladder);
-  for (const change of changes) {
-    await ladderRepo.setRank(change.sheetRow, change.newRank);
-  }
+  await ladderRepo.setRanks(changes);
   if (changes.length > 0) await ladderRepo.sortLadderByRank();
 
   const updatedLadder = ladder.map((r) => {
@@ -89,9 +87,7 @@ export interface ShuffleLadderRanksResult {
 export async function shuffleLadderRanks(): Promise<ShuffleLadderRanksResult> {
   const ladder = await ladderRepo.getLadder();
   const changes = shuffleRepeatedly(ladder);
-  for (const change of changes) {
-    await ladderRepo.setRank(change.sheetRow, change.newRank);
-  }
+  await ladderRepo.setRanks(changes);
   if (changes.length > 0) await ladderRepo.sortLadderByRank();
 
   const updatedLadder = ladder.map((r) => {
@@ -129,9 +125,7 @@ export async function removePlayer(discordUserId: string, scope: BanScope): Prom
     (r) => !toRemove.some((removed) => removed.sheetRow === r.sheetRow),
   );
   const changes = compactRanks(remainingLadder);
-  for (const change of changes) {
-    await ladderRepo.setRank(change.sheetRow, change.newRank);
-  }
+  await ladderRepo.setRanks(changes);
   // Always sort, even with no rank changes — clearRow above can leave a blank gap mid-sheet,
   // and sorting moves blanks to the end.
   await ladderRepo.sortLadderByRank();
@@ -192,9 +186,7 @@ export async function setManualRank(targetSheetRow: number, desiredRank: number)
   if (!target) return undefined;
 
   const changes = applyManualRank(ladder, targetSheetRow, desiredRank);
-  for (const change of changes) {
-    await ladderRepo.setRank(change.sheetRow, change.newRank);
-  }
+  await ladderRepo.setRanks(changes);
   if (changes.length > 0) await ladderRepo.sortLadderByRank();
 
   const updatedLadder = ladder.map((r) => {

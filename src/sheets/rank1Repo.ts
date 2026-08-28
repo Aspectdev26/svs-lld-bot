@@ -147,10 +147,16 @@ export async function recordDefend(entry: LadderRow): Promise<number> {
   return defends;
 }
 
-/** Bumps `entry`'s all-time win/loss/dodgesAgainst total by one, creating its row (at 0/0/0/0) if this is their first recorded activity. */
-async function upsertStat(entry: LadderRow, field: "wins" | "losses" | "dodgesAgainst"): Promise<number> {
-  const rows = await getAllRows();
-  const existing = rows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
+/**
+ * Bumps `entry`'s all-time win/loss/dodgesAgainst total by one, creating its row (at 0/0/0/0) if
+ * this is their first recorded activity. Pass `rows` (an already-fetched `getAllRows()` snapshot)
+ * when the caller is about to make several of these calls back to back — e.g. recording both
+ * sides of a match — so they share one read instead of each re-fetching the whole sheet. Only
+ * safe to share across calls that target different rows and happen before any of them write.
+ */
+async function upsertStat(entry: LadderRow, field: "wins" | "losses" | "dodgesAgainst", rows?: Rank1Row[]): Promise<number> {
+  const allRows = rows ?? (await getAllRows());
+  const existing = allRows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
   const newValue = (existing?.[field] ?? 0) + 1;
 
   if (existing) {
@@ -177,13 +183,13 @@ async function upsertStat(entry: LadderRow, field: "wins" | "losses" | "dodgesAg
 }
 
 /** Records an all-time win for `entry` (any rank, any outcome type — reported win or dodge win). Returns the new total. */
-export async function recordWin(entry: LadderRow): Promise<number> {
-  return upsertStat(entry, "wins");
+export async function recordWin(entry: LadderRow, rows?: Rank1Row[]): Promise<number> {
+  return upsertStat(entry, "wins", rows);
 }
 
 /** Records an all-time loss for `entry` (any rank, any outcome type — reported loss or dodge loss). Returns the new total. */
-export async function recordLoss(entry: LadderRow): Promise<number> {
-  return upsertStat(entry, "losses");
+export async function recordLoss(entry: LadderRow, rows?: Rank1Row[]): Promise<number> {
+  return upsertStat(entry, "losses", rows);
 }
 
 /**

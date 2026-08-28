@@ -147,6 +147,25 @@ export async function updateSheetCell(
   });
 }
 
+/**
+ * Writes several independent ranges (any mix of single cells, row slices, even different tabs) in
+ * one HTTP round trip instead of one call each — use this whenever a flow would otherwise issue a
+ * handful of unrelated `updateSheetCell`/`updateSheetRow` calls back to back, since every call here
+ * is serialized through the same queue regardless of how it's awaited.
+ */
+export async function batchUpdateValues(updates: { range: string; values: (string | number)[][] }[]): Promise<void> {
+  if (updates.length === 0) return;
+  await queue.run(async () => {
+    await getSheetsApi().spreadsheets.values.batchUpdate({
+      spreadsheetId: config.sheets.sheetId,
+      requestBody: {
+        valueInputOption: "USER_ENTERED",
+        data: updates.map((u) => ({ range: u.range, values: u.values })),
+      },
+    });
+  });
+}
+
 /** Runs an arbitrary spreadsheets.batchUpdate (formatting, sheet properties, etc.), queued like everything else. */
 export async function batchUpdateSpreadsheet(requests: sheets_v4.Schema$Request[]): Promise<void> {
   if (requests.length === 0) return;

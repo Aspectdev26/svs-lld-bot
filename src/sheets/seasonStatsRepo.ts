@@ -35,18 +35,36 @@ async function currentSheetName(): Promise<string> {
   return currentSeasonName || SEASON_STATS_SHEET;
 }
 
-/** Every character with recorded activity so far this season. */
-export async function getAllRows(): Promise<SeasonStatsRow[]> {
-  const sheetName = await currentSheetName();
+async function getRowsForSheet(sheetName: string): Promise<SeasonStatsRow[]> {
   const values = await readSheetRange(`${sheetName}!A2:H`);
   return values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is SeasonStatsRow => r !== null);
 }
 
-async function upsertStat(entry: LadderRow, field: "defends" | "wins" | "losses"): Promise<number> {
+/** Every character with recorded activity so far this season. */
+export async function getAllRows(): Promise<SeasonStatsRow[]> {
   const sheetName = await currentSheetName();
-  const rows = await getAllRows();
+  return getRowsForSheet(sheetName);
+}
+
+/** Fetches the current season's tab name + full row snapshot together, for passing into several `recordWin`/`recordLoss` calls in a row (see `upsertStat`). */
+export async function loadCache(): Promise<{ sheetName: string; rows: SeasonStatsRow[] }> {
+  const sheetName = await currentSheetName();
+  const rows = await getRowsForSheet(sheetName);
+  return { sheetName, rows };
+}
+
+/**
+ * Bumps `entry`'s season defends/wins/losses total by one, creating its row if this is their first
+ * recorded activity this season. Pass `cache` (from `loadCache()`) when the caller is about to make
+ * several of these calls back to back — e.g. recording both sides of a match — so they share one
+ * sheet-name lookup and one read instead of each re-fetching both. Only safe to share across calls
+ * that target different rows and happen before any of them write.
+ */
+async function upsertStat(entry: LadderRow, field: "defends" | "wins" | "losses", cache?: { sheetName: string; rows: SeasonStatsRow[] }): Promise<number> {
+  const sheetName = cache?.sheetName ?? (await currentSheetName());
+  const rows = cache?.rows ?? (await getRowsForSheet(sheetName));
   const existing = rows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
   const newValue = (existing?.[field] ?? 0) + 1;
 
@@ -71,18 +89,18 @@ async function upsertStat(entry: LadderRow, field: "defends" | "wins" | "losses"
 }
 
 /** Records a title defense for `entry` this season. Returns the new season total. */
-export async function recordDefend(entry: LadderRow): Promise<number> {
-  return upsertStat(entry, "defends");
+export async function recordDefend(entry: LadderRow, cache?: { sheetName: string; rows: SeasonStatsRow[] }): Promise<number> {
+  return upsertStat(entry, "defends", cache);
 }
 
 /** Records a win for `entry` this season (any rank, any outcome type). Returns the new season total. */
-export async function recordWin(entry: LadderRow): Promise<number> {
-  return upsertStat(entry, "wins");
+export async function recordWin(entry: LadderRow, cache?: { sheetName: string; rows: SeasonStatsRow[] }): Promise<number> {
+  return upsertStat(entry, "wins", cache);
 }
 
 /** Records a loss for `entry` this season (any rank, any outcome type). Returns the new season total. */
-export async function recordLoss(entry: LadderRow): Promise<number> {
-  return upsertStat(entry, "losses");
+export async function recordLoss(entry: LadderRow, cache?: { sheetName: string; rows: SeasonStatsRow[] }): Promise<number> {
+  return upsertStat(entry, "losses", cache);
 }
 
 /** True if a tab with this exact (already-sanitized) name already exists — used to reject a reused season name. */

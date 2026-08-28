@@ -1,6 +1,7 @@
 import {
   appendSheetRow,
   batchUpdateSpreadsheet,
+  batchUpdateValues,
   clearSheetRow,
   getSheetMetaByName,
   readSheetRange,
@@ -121,7 +122,19 @@ export async function addLadderEntry(entry: Omit<LadderRow, "sheetRow">): Promis
 }
 
 export async function setRank(sheetRow: number, rank: number): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "A", rank);
+  await setRanks([{ sheetRow, newRank: rank }]);
+}
+
+/**
+ * Batches multiple rank writes (both sides of a match, a full shuffle, a season reset) into one
+ * API call. Takes the same `{ sheetRow, newRank }` shape rankingService's change lists already use,
+ * so a `for (const change of changes) await setRank(...)` loop can drop straight in as `setRanks(changes)`.
+ */
+export async function setRanks(changes: { sheetRow: number; newRank: number }[]): Promise<void> {
+  if (changes.length === 0) return;
+  await batchUpdateValues(
+    changes.map((c) => ({ range: `${LADDER_SHEET}!A${c.sheetRow}:A${c.sheetRow}`, values: [[c.newRank]] })),
+  );
 }
 
 /** Sets Vacation/Available on one specific ladder entry (one character/element), not a player's whole roster. */
@@ -141,16 +154,22 @@ export async function setVacationWarningSentAt(sheetRow: number, iso: string): P
 
 /** Marks an entry as actively challenging: Status="Challenge" plus the opponent's rank and a display timestamp. */
 export async function setChallengeInfo(sheetRow: number, opponentRank: number, challengeDateDisplay: string): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "F", "Challenge");
-  await updateSheetCell(LADDER_SHEET, sheetRow, "G", challengeDateDisplay);
-  await updateSheetCell(LADDER_SHEET, sheetRow, "H", opponentRank);
+  await batchUpdateValues([
+    { range: `${LADDER_SHEET}!F${sheetRow}:H${sheetRow}`, values: [["Challenge", challengeDateDisplay, opponentRank]] },
+  ]);
 }
 
 /** Clears an entry's active-challenge display, reverting Status to Available. */
 export async function clearChallengeInfo(sheetRow: number): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "F", "Available");
-  await updateSheetCell(LADDER_SHEET, sheetRow, "G", "");
-  await updateSheetCell(LADDER_SHEET, sheetRow, "H", "");
+  await clearChallengeInfoForRows([sheetRow]);
+}
+
+/** Batches clearChallengeInfo across multiple entries (e.g. both sides of a resolved match) into one API call. */
+export async function clearChallengeInfoForRows(sheetRows: number[]): Promise<void> {
+  if (sheetRows.length === 0) return;
+  await batchUpdateValues(
+    sheetRows.map((row) => ({ range: `${LADDER_SHEET}!F${row}:H${row}`, values: [["Available", "", ""]] })),
+  );
 }
 
 export async function setDodgeWins(sheetRow: number, count: number): Promise<void> {

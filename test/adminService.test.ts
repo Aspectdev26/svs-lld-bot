@@ -6,6 +6,7 @@ vi.mock("../src/sheets/ladderRepo.js", () => ({
   getLadder: vi.fn(),
   clearRow: vi.fn(),
   setRank: vi.fn(),
+  setRanks: vi.fn(),
   setDodgeCount: vi.fn(),
   findEntry: vi.fn(),
   clearChallengeInfo: vi.fn(),
@@ -100,6 +101,7 @@ beforeEach(() => {
   vi.mocked(ladderRepo.getLadder).mockReset().mockResolvedValue([]);
   vi.mocked(ladderRepo.clearRow).mockReset();
   vi.mocked(ladderRepo.setRank).mockReset();
+  vi.mocked(ladderRepo.setRanks).mockReset();
   vi.mocked(ladderRepo.setDodgeCount).mockReset();
   vi.mocked(ladderRepo.findEntry).mockReset().mockResolvedValue(undefined);
   vi.mocked(ladderRepo.clearChallengeInfo).mockReset();
@@ -291,9 +293,10 @@ describe("resetLadderEndSeason", () => {
     const result = await resetLadderEndSeason("Season 1");
 
     expect(rankingService.shuffleRanks).toHaveBeenCalledTimes(3);
-    expect(ladderRepo.setRank).toHaveBeenCalledWith(2, 3);
-    expect(ladderRepo.setRank).toHaveBeenCalledWith(4, 1);
-    expect(ladderRepo.setRank).not.toHaveBeenCalledWith(3, expect.anything());
+    expect(ladderRepo.setRanks).toHaveBeenCalledWith([
+      { sheetRow: 2, newRank: 3 },
+      { sheetRow: 4, newRank: 1 },
+    ]);
     expect(ladderRepo.sortLadderByRank).toHaveBeenCalled();
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.changedCount).toBe(2);
@@ -319,9 +322,10 @@ describe("shuffleLadderRanks", () => {
     const result = await shuffleLadderRanks();
 
     expect(rankingService.shuffleRanks).toHaveBeenCalledTimes(3);
-    expect(ladderRepo.setRank).toHaveBeenCalledWith(2, 3);
-    expect(ladderRepo.setRank).toHaveBeenCalledWith(4, 1);
-    expect(ladderRepo.setRank).not.toHaveBeenCalledWith(3, expect.anything());
+    expect(ladderRepo.setRanks).toHaveBeenCalledWith([
+      { sheetRow: 2, newRank: 3 },
+      { sheetRow: 4, newRank: 1 },
+    ]);
     expect(ladderRepo.sortLadderByRank).toHaveBeenCalled();
     expect(result.changedCount).toBe(2);
     expect(matchesRepo.getPendingMatches).not.toHaveBeenCalled();
@@ -336,7 +340,7 @@ describe("shuffleLadderRanks", () => {
     const result = await shuffleLadderRanks();
 
     expect(result.changedCount).toBe(0);
-    expect(ladderRepo.setRank).not.toHaveBeenCalled();
+    expect(ladderRepo.setRanks).toHaveBeenCalledWith([]); // no-op: setRanks guards against empty writes itself
     expect(ladderRepo.sortLadderByRank).not.toHaveBeenCalled();
   });
 });

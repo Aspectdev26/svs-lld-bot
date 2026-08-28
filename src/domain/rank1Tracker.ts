@@ -24,11 +24,14 @@ export async function recordMatchResult(
   const winnerEntry = winnerIsChallenger ? challengerEntry : defenderEntry;
   const loserEntry = winnerIsChallenger ? defenderEntry : challengerEntry;
 
+  // Winner and loser are always different rows, so it's safe for recordWin/recordLoss below to
+  // share one read of each sheet instead of each independently re-fetching the whole thing.
+  const [rank1Rows, seasonCache] = await Promise.all([rank1Repo.getAllRows(), seasonStatsRepo.loadCache()]);
   await Promise.all([
-    rank1Repo.recordWin(winnerEntry),
-    rank1Repo.recordLoss(loserEntry),
-    seasonStatsRepo.recordWin(winnerEntry),
-    seasonStatsRepo.recordLoss(loserEntry),
+    rank1Repo.recordWin(winnerEntry, rank1Rows),
+    rank1Repo.recordLoss(loserEntry, rank1Rows),
+    seasonStatsRepo.recordWin(winnerEntry, seasonCache),
+    seasonStatsRepo.recordLoss(loserEntry, seasonCache),
   ]);
 
   if (preMatchDefenderRank !== 1) return { changed: false };

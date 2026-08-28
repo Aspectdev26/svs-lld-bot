@@ -24,9 +24,7 @@ export async function leaveLadderEntry(discordUserId: string, element: Element):
 
   const remainingLadder = (await ladderRepo.getLadder()).filter((r) => r.sheetRow !== entry.sheetRow);
   const changes = compactRanks(remainingLadder);
-  for (const change of changes) {
-    await ladderRepo.setRank(change.sheetRow, change.newRank);
-  }
+  await ladderRepo.setRanks(changes);
   await ladderRepo.sortLadderByRank();
 
   if (entry.rank === 1) {

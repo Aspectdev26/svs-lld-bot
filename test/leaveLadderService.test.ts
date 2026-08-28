@@ -6,6 +6,7 @@ vi.mock("../src/sheets/ladderRepo.js", () => ({
   getLadder: vi.fn(),
   clearRow: vi.fn(),
   setRank: vi.fn(),
+  setRanks: vi.fn(),
   sortLadderByRank: vi.fn(),
 }));
 vi.mock("../src/domain/rank1Tracker.js", () => ({
@@ -41,6 +42,7 @@ beforeEach(() => {
   vi.mocked(ladderRepo.getLadder).mockReset().mockResolvedValue([]);
   vi.mocked(ladderRepo.clearRow).mockReset();
   vi.mocked(ladderRepo.setRank).mockReset();
+  vi.mocked(ladderRepo.setRanks).mockReset();
   vi.mocked(ladderRepo.sortLadderByRank).mockReset();
   vi.mocked(rank1Tracker.syncToCurrentHolder).mockReset();
 });
@@ -66,7 +68,7 @@ describe("leaveLadderEntry", () => {
 
     expect(result).toEqual({ ok: true, removedEntry: leaving });
     expect(ladderRepo.clearRow).toHaveBeenCalledWith(3);
-    expect(ladderRepo.setRank).toHaveBeenCalledWith(4, 2);
+    expect(ladderRepo.setRanks).toHaveBeenCalledWith([{ sheetRow: 4, newRank: 2 }]);
     expect(ladderRepo.sortLadderByRank).toHaveBeenCalled();
     expect(rank1Tracker.syncToCurrentHolder).not.toHaveBeenCalled();
   });

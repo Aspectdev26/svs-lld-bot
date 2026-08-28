@@ -4,7 +4,9 @@ import type { LadderRow, MatchRow } from "../src/types.js";
 vi.mock("../src/sheets/ladderRepo.js", () => ({
   findEntry: vi.fn(),
   setRank: vi.fn(),
+  setRanks: vi.fn(),
   clearChallengeInfo: vi.fn(),
+  clearChallengeInfoForRows: vi.fn(),
   setChallengeInfo: vi.fn(),
   setDodgeWins: vi.fn(),
   setDodgeCount: vi.fn(),
@@ -82,7 +84,9 @@ function matchRow(overrides: Partial<MatchRow> = {}): MatchRow {
 beforeEach(() => {
   vi.mocked(ladderRepo.findEntry).mockReset();
   vi.mocked(ladderRepo.setRank).mockReset();
+  vi.mocked(ladderRepo.setRanks).mockReset();
   vi.mocked(ladderRepo.clearChallengeInfo).mockReset();
+  vi.mocked(ladderRepo.clearChallengeInfoForRows).mockReset();
   vi.mocked(ladderRepo.setDodgeWins).mockReset();
   vi.mocked(ladderRepo.setDodgeCount).mockReset();
   vi.mocked(ladderRepo.sortLadderByRank).mockReset();
@@ -130,8 +134,10 @@ describe("reportWin", () => {
       expect(result.winnerMovedUp).toBe(true);
       expect(result.match.winnerUserId).toBe("u1");
     }
-    expect(ladderRepo.setRank).toHaveBeenCalledWith(2, 1); // challenger takes rank 1
-    expect(ladderRepo.setRank).toHaveBeenCalledWith(3, 3); // defender takes rank 3
+    expect(ladderRepo.setRanks).toHaveBeenCalledWith([
+      { sheetRow: 2, newRank: 1 }, // challenger takes rank 1
+      { sheetRow: 3, newRank: 3 }, // defender takes rank 3
+    ]);
     expect(matchesRepo.updateMatch).toHaveBeenCalledWith(expect.objectContaining({ winnerUserId: "u1", status: "Reported" }));
   });
 
@@ -152,7 +158,7 @@ describe("reportWin", () => {
       expect(result.winnerMovedUp).toBe(false);
       expect(result.match.winnerUserId).toBe("u2");
     }
-    expect(ladderRepo.setRank).not.toHaveBeenCalled();
+    expect(ladderRepo.setRanks).not.toHaveBeenCalled();
   });
 
   it("decrements dodgeCount for both participants when it's above 0", async () => {

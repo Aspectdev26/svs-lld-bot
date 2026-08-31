@@ -58,4 +58,7 @@ export const config = {
   matchChannels: {
     categoryName: process.env.MATCH_CHANNEL_CATEGORY_NAME || "Current Challenges",
   },
+  health: {
+    port: int("HEALTH_PORT", 3103),
+  },
 };

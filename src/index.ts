@@ -23,6 +23,7 @@ import { EXTENDED_VACATION_SHEET, EXTENDED_VACATION_HEADERS } from "./sheets/ext
 import { SETTINGS_SHEET, SETTINGS_HEADERS, getSettings } from "./sheets/settingsRepo.js";
 import { applyLadderFormatting } from "./sheets/ladderFormatting.js";
 import { applyStandardTabFormatting } from "./sheets/sheetFormatting.js";
+import { startHealthServer } from "./health.js";
 
 const NON_LADDER_TABS = [
   { name: MATCHES_SHEET, headers: MATCHES_HEADERS },
@@ -37,6 +38,9 @@ const NON_LADDER_TABS = [
 ];
 
 async function main() {
+  let ready = false;
+  startHealthServer(() => ready);
+
   await ensureSheetTabs([{ name: LADDER_SHEET, headers: LADDER_HEADERS }, ...NON_LADDER_TABS]);
 
   await applyLadderFormatting().catch((err) => console.error("Failed to apply Ladder sheet formatting:", err));
@@ -59,6 +63,7 @@ async function main() {
   registerMessageEvent(client);
 
   client.once("clientReady", () => {
+    ready = true;
     startMatchWatcher(client);
     startVacationWatcher(client);
     ensureRegisterPanel(client).catch((err) => console.error("Failed to post register panel:", err));

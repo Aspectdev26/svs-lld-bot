@@ -208,7 +208,16 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
   // entirely, so there's no point updating its buttons first.
   await interaction.deferUpdate();
 
-  const { entry } = await approveSignup(request, interaction.user.id);
+  const result = await approveSignup(requestId, interaction.user.id);
+  if (!result.ok) {
+    await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
+    await postAutoDeletingConfirmation(
+      interaction.client,
+      "This signup request was already resolved by another League Manager.",
+    );
+    return;
+  }
+  const { entry } = result;
 
   await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
   await postAutoDeletingConfirmation(
@@ -261,7 +270,12 @@ export async function handleRegisterDenyModal(interaction: ModalSubmitInteractio
   }
 
   const reason = interaction.fields.getTextInputValue(DENY_REASON_INPUT_ID);
-  await denySignup(request, interaction.user.id, reason);
+  const result = await denySignup(requestId, interaction.user.id, reason);
+  if (!result.ok) {
+    await interaction.editReply({ content: "This signup request has already been resolved." });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
 
   await interaction.editReply({ content: "Signup request denied and the requester has been notified." });
   scheduleReplyCleanup(interaction);

@@ -5,6 +5,7 @@ import * as signupRequestsRepo from "../sheets/signupRequestsRepo.js";
 import * as bannedRepo from "../sheets/bannedRepo.js";
 import { nextRankForNewEntry } from "./rankingService.js";
 import { formatElement } from "../util/formatElement.js";
+import { enqueueResolution } from "./resolutionQueue.js";
 import type { Build, Element, LadderRow, SignupRequestRow } from "../types.js";
 
 function genId(): string {
@@ -74,48 +75,61 @@ export async function createSignupRequest(
   return { ok: true, request: stored ?? { ...request, sheetRow: -1 } };
 }
 
-export type ApproveSignupResult = { entry: LadderRow };
+export type ApproveSignupResult = { ok: true; entry: LadderRow } | { ok: false };
+export type DenySignupResult = { ok: true } | { ok: false };
 
 /** Adds the requester to the ladder in last place and marks the request Approved. */
-export async function approveSignup(request: SignupRequestRow, resolvedByUserId: string): Promise<ApproveSignupResult> {
-  const ladder = await ladderRepo.getLadder();
-  const rank = nextRankForNewEntry(ladder);
+export async function approveSignup(requestId: string, resolvedByUserId: string): Promise<ApproveSignupResult> {
+  return enqueueResolution(async () => {
+    const request = await signupRequestsRepo.getRequestById(requestId);
+    if (!request || request.status !== "Pending") return { ok: false };
 
-  const newEntry: Omit<LadderRow, "sheetRow"> = {
-    rank,
-    element: request.element,
-    build: request.build,
-    characterName: request.characterName,
-    discordName: request.discordName,
-    discordUserId: request.discordUserId,
-    status: "Available",
-    joinedAt: new Date().toISOString(),
-    challengeDate: "",
-    opponentRank: "",
-    notes: "",
-    dodgeWins: 0,
-    dodgeCount: 0,
-    vacationSince: "",
-    vacationWarningSentAt: "",
-  };
-  await ladderRepo.addLadderEntry(newEntry);
+    const ladder = await ladderRepo.getLadder();
+    const rank = nextRankForNewEntry(ladder);
 
-  if (rank === 1) {
-    await rank1Repo.crownHolder({ ...newEntry, sheetRow: -1 });
-  }
+    const newEntry: Omit<LadderRow, "sheetRow"> = {
+      rank,
+      element: request.element,
+      build: request.build,
+      characterName: request.characterName,
+      discordName: request.discordName,
+      discordUserId: request.discordUserId,
+      status: "Available",
+      joinedAt: new Date().toISOString(),
+      challengeDate: "",
+      opponentRank: "",
+      notes: "",
+      dodgeWins: 0,
+      dodgeCount: 0,
+      vacationSince: "",
+      vacationWarningSentAt: "",
+    };
+    await ladderRepo.addLadderEntry(newEntry);
 
-  request.status = "Approved";
-  request.resolvedByUserId = resolvedByUserId;
-  request.resolvedAt = new Date().toISOString();
-  await signupRequestsRepo.updateRequest(request);
+    if (rank === 1) {
+      await rank1Repo.crownHolder({ ...newEntry, sheetRow: -1 });
+    }
 
-  return { entry: { ...newEntry, sheetRow: -1, rank } };
+    request.status = "Approved";
+    request.resolvedByUserId = resolvedByUserId;
+    request.resolvedAt = new Date().toISOString();
+    await signupRequestsRepo.updateRequest(request);
+
+    return { ok: true, entry: { ...newEntry, sheetRow: -1, rank } };
+  });
 }
 
-export async function denySignup(request: SignupRequestRow, resolvedByUserId: string, reason: string): Promise<void> {
-  request.status = "Denied";
-  request.resolvedByUserId = resolvedByUserId;
-  request.resolvedAt = new Date().toISOString();
-  request.denyReason = reason;
-  await signupRequestsRepo.updateRequest(request);
+export async function denySignup(requestId: string, resolvedByUserId: string, reason: string): Promise<DenySignupResult> {
+  return enqueueResolution(async () => {
+    const request = await signupRequestsRepo.getRequestById(requestId);
+    if (!request || request.status !== "Pending") return { ok: false };
+
+    request.status = "Denied";
+    request.resolvedByUserId = resolvedByUserId;
+    request.resolvedAt = new Date().toISOString();
+    request.denyReason = reason;
+    await signupRequestsRepo.updateRequest(request);
+
+    return { ok: true };
+  });
 }

@@ -20,6 +20,7 @@ import * as vacationRequestsRepo from "../../sheets/vacationRequestsRepo.js";
 import * as extendedVacationRepo from "../../sheets/extendedVacationRepo.js";
 import * as vacationService from "../../domain/vacationService.js";
 import { handleDodgeCountThreshold } from "../../domain/dodgeService.js";
+import { enqueueResolution } from "../../domain/resolutionQueue.js";
 import { finalizeReportWin } from "../reportWinFlow.js";
 import { createMatchChannel } from "../matchChannels.js";
 import { refreshTop10Panel } from "../top10Panel.js";
@@ -277,9 +278,48 @@ async function handleRequestApproveDenyButton(interaction: ButtonInteraction, de
   // threshold + ladder mutation), which can easily exceed Discord's 3s deadline.
   await interaction.deferUpdate();
 
-  const entry = await ladderRepo.findEntry(request.discordUserId, request.element);
-  if (!entry) {
-    await vacationService.denyVacationRequest(request, interaction.user.id, "Entry no longer on the ladder.");
+  // The whole approve path — re-check, possible forfeit, and the final Approved write — runs
+  // inside the shared resolution queue so a second League Manager's click (Approve or Deny) on
+  // this same request can never race past this one's write. See resolutionQueue.ts.
+  const resolution = await enqueueResolution(async () => {
+    const freshRequest = await vacationRequestsRepo.getRequestById(requestId);
+    if (!freshRequest || freshRequest.status !== "Pending") return { ok: false as const };
+
+    const entry = await ladderRepo.findEntry(freshRequest.discordUserId, freshRequest.element);
+    if (!entry) {
+      await vacationService.denyVacationRequest(freshRequest, interaction.user.id, "Entry no longer on the ladder.");
+      return { ok: true as const, kind: "entryMissing" as const, request: freshRequest };
+    }
+
+    const outcome = await forfeitPendingMatchIfAny(interaction.client, entry);
+    if (!outcome.ok) {
+      return { ok: true as const, kind: "forfeitFailed" as const, entry, reason: outcome.reason };
+    }
+
+    if (!outcome.entryStillExists) {
+      freshRequest.status = "Approved";
+      freshRequest.resolvedByUserId = interaction.user.id;
+      freshRequest.resolvedAt = new Date().toISOString();
+      await vacationRequestsRepo.updateRequest(freshRequest);
+      return { ok: true as const, kind: "autoRemoved" as const, entry, request: freshRequest };
+    }
+
+    const freshEntry = outcome.entry;
+    if (def.requestType === "Vacation") {
+      await vacationService.approveVacationRequest(freshRequest, interaction.user.id, freshEntry);
+    } else {
+      await vacationService.approveExtendedVacationRequest(freshRequest, interaction.user.id, freshEntry);
+    }
+    return { ok: true as const, kind: "approved" as const, entry: freshEntry, request: freshRequest };
+  });
+
+  if (!resolution.ok) {
+    await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
+    await postAutoDeletingConfirmation(interaction.client, "This request was already resolved by another League Manager.");
+    return;
+  }
+
+  if (resolution.kind === "entryMissing") {
     await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
     await postAutoDeletingConfirmation(
       interaction.client,
@@ -288,10 +328,9 @@ async function handleRequestApproveDenyButton(interaction: ButtonInteraction, de
     return;
   }
 
-  const outcome = await forfeitPendingMatchIfAny(interaction.client, entry);
-  if (!outcome.ok) {
+  if (resolution.kind === "forfeitFailed") {
     await interaction.followUp({
-      content: `Couldn't process ${entry.characterName}'s active match (${outcome.reason}) — try approving again.`,
+      content: `Couldn't process ${resolution.entry.characterName}'s active match (${resolution.reason}) — try approving again.`,
       ephemeral: true,
     });
     return;
@@ -299,22 +338,17 @@ async function handleRequestApproveDenyButton(interaction: ButtonInteraction, de
 
   await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
 
-  if (!outcome.entryStillExists) {
-    request.status = "Approved";
-    request.resolvedByUserId = interaction.user.id;
-    request.resolvedAt = new Date().toISOString();
-    await vacationRequestsRepo.updateRequest(request);
+  if (resolution.kind === "autoRemoved") {
     await postAutoDeletingConfirmation(
       interaction.client,
-      `✅ Approved by <@${interaction.user.id}> — but **${entry.characterName}** had already reached the dodge-removal threshold and was automatically removed from the ladder instead.`,
+      `✅ Approved by <@${interaction.user.id}> — but **${resolution.entry.characterName}** had already reached the dodge-removal threshold and was automatically removed from the ladder instead.`,
     );
     return;
   }
 
-  const freshEntry = outcome.entry;
+  const freshEntry = resolution.entry;
 
   if (def.requestType === "Vacation") {
-    await vacationService.approveVacationRequest(request, interaction.user.id, freshEntry);
     await postAutoDeletingConfirmation(interaction.client, `✅ Vacation approved by <@${interaction.user.id}> for **${freshEntry.characterName}**.`);
 
     const embed = new EmbedBuilder()
@@ -333,7 +367,6 @@ async function handleRequestApproveDenyButton(interaction: ButtonInteraction, de
       // DMs closed — the public results-channel post above still covers it.
     }
   } else {
-    await vacationService.approveExtendedVacationRequest(request, interaction.user.id, freshEntry);
     await postAutoDeletingConfirmation(
       interaction.client,
       `✅ Extended Vacation approved by <@${interaction.user.id}> for **${freshEntry.characterName}** (was rank ${freshEntry.rank}).`,
@@ -378,7 +411,18 @@ async function handleRequestDenyModal(interaction: ModalSubmitInteraction, def: 
   }
 
   const reason = interaction.fields.getTextInputValue(DENY_REASON_INPUT_ID);
-  await vacationService.denyVacationRequest(request, interaction.user.id, reason);
+  const resolution = await enqueueResolution(async () => {
+    const fresh = await vacationRequestsRepo.getRequestById(requestId);
+    if (!fresh || fresh.status !== "Pending") return { ok: false as const };
+    await vacationService.denyVacationRequest(fresh, interaction.user.id, reason);
+    return { ok: true as const };
+  });
+
+  if (!resolution.ok) {
+    await interaction.editReply({ content: "This request has already been resolved." });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
 
   await interaction.editReply({ content: "Request denied and the requester has been notified." });
   scheduleReplyCleanup(interaction);

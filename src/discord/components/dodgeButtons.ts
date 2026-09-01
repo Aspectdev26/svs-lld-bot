@@ -13,6 +13,7 @@ import * as dodgesRepo from "../../sheets/dodgesRepo.js";
 import * as matchesRepo from "../../sheets/matchesRepo.js";
 import * as matchService from "../../domain/matchService.js";
 import { resolveDodge, handleDodgeCountThreshold } from "../../domain/dodgeService.js";
+import { enqueueResolution } from "../../domain/resolutionQueue.js";
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation, deleteMessageByUrl } from "../notify.js";
 import { closeMatchChannel } from "../matchChannels.js";
@@ -59,8 +60,8 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
   }
 
   // Approve
-  const match = await matchesRepo.getMatchById(dodge.matchId);
-  if (!match || match.status !== "Pending") {
+  const matchFastCheck = await matchesRepo.getMatchById(dodge.matchId);
+  if (!matchFastCheck || matchFastCheck.status !== "Pending") {
     await interaction.reply({ content: "The underlying match is no longer pending — can't approve.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
@@ -71,8 +72,33 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
   // already above. We're about to delete this message entirely, so no point updating it first.
   await interaction.deferUpdate();
 
-  const { rank1Update, defenderDodgeCount } = await matchService.applyDodgeWin(match);
-  await resolveDodge(dodge, interaction.user.id, true);
+  // Re-check + apply + write all run inside the shared resolution queue so a second League
+  // Manager's click (Approve or Deny) on this same dodge can never race past this one's write.
+  // See resolutionQueue.ts.
+  const resolution = await enqueueResolution(async () => {
+    const freshDodge = await dodgesRepo.getDodgeById(dodgeId);
+    if (!freshDodge || freshDodge.status !== "Pending") return { ok: false as const };
+
+    const freshMatch = await matchesRepo.getMatchById(freshDodge.matchId);
+    if (!freshMatch || freshMatch.status !== "Pending") return { ok: true as const, kind: "matchNotPending" as const };
+
+    const { rank1Update, defenderDodgeCount } = await matchService.applyDodgeWin(freshMatch);
+    await resolveDodge(freshDodge, interaction.user.id, true);
+
+    return { ok: true as const, kind: "approved" as const, match: freshMatch, rank1Update, defenderDodgeCount };
+  });
+
+  if (!resolution.ok) {
+    await postAutoDeletingConfirmation(interaction.client, "This dodge request was already resolved by another League Manager.");
+    return;
+  }
+
+  if (resolution.kind === "matchNotPending") {
+    await postAutoDeletingConfirmation(interaction.client, "The underlying match is no longer pending — can't approve.");
+    return;
+  }
+
+  const { match, rank1Update, defenderDodgeCount } = resolution;
 
   await deleteMessageByUrl(interaction.client, dodge.leagueManagerMessageUrl);
   await postAutoDeletingConfirmation(

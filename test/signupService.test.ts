@@ -182,34 +182,76 @@ describe("createSignupRequest", () => {
 
 describe("approveSignup", () => {
   it("places the new entry at the bottom of the ladder", async () => {
+    vi.mocked(signupRequestsRepo.getRequestById).mockResolvedValue(requestRow());
     vi.mocked(ladderRepo.getLadder).mockResolvedValue([ladderRow({ rank: 1 }), ladderRow({ rank: 2 })]);
 
-    const { entry } = await approveSignup(requestRow(), "admin1");
+    const result = await approveSignup("req1", "admin1");
 
-    expect(entry.rank).toBe(3);
-    expect(entry.characterName).toBe("Frosty");
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.entry.rank).toBe(3);
+    expect(result.entry.characterName).toBe("Frosty");
     expect(ladderRepo.addLadderEntry).toHaveBeenCalledTimes(1);
     expect(rank1Repo.crownHolder).not.toHaveBeenCalled();
     expect(signupRequestsRepo.updateRequest).toHaveBeenCalledWith(expect.objectContaining({ status: "Approved" }));
   });
 
   it("seeds the rank-1 tracker when the ladder was empty", async () => {
+    vi.mocked(signupRequestsRepo.getRequestById).mockResolvedValue(requestRow());
     vi.mocked(ladderRepo.getLadder).mockResolvedValue([]);
 
-    const { entry } = await approveSignup(requestRow(), "admin1");
+    const result = await approveSignup("req1", "admin1");
 
-    expect(entry.rank).toBe(1);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.entry.rank).toBe(1);
     expect(rank1Repo.crownHolder).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses to resolve a request that's no longer Pending (already approved/denied by someone else)", async () => {
+    vi.mocked(signupRequestsRepo.getRequestById).mockResolvedValue(requestRow({ status: "Approved" }));
+
+    const result = await approveSignup("req1", "admin1");
+
+    expect(result.ok).toBe(false);
+    expect(ladderRepo.addLadderEntry).not.toHaveBeenCalled();
+    expect(signupRequestsRepo.updateRequest).not.toHaveBeenCalled();
+  });
+
+  it("serializes two concurrent approvals of the same request so only one succeeds", async () => {
+    let status: SignupRequestRow["status"] = "Pending";
+    vi.mocked(signupRequestsRepo.getRequestById).mockImplementation(async () => requestRow({ status }));
+    vi.mocked(signupRequestsRepo.updateRequest).mockImplementation(async (r) => {
+      status = r.status;
+    });
+    vi.mocked(ladderRepo.getLadder).mockResolvedValue([]);
+
+    const [first, second] = await Promise.all([approveSignup("req1", "admin1"), approveSignup("req1", "admin2")]);
+
+    const oks = [first, second].filter((r) => r.ok);
+    expect(oks).toHaveLength(1);
+    expect(ladderRepo.addLadderEntry).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("denySignup", () => {
   it("marks the request Denied with a reason", async () => {
-    const request = requestRow();
-    await denySignup(request, "admin1", "no valid character screenshot");
+    vi.mocked(signupRequestsRepo.getRequestById).mockResolvedValue(requestRow());
 
+    const result = await denySignup("req1", "admin1", "no valid character screenshot");
+
+    expect(result.ok).toBe(true);
     expect(signupRequestsRepo.updateRequest).toHaveBeenCalledWith(
       expect.objectContaining({ status: "Denied", resolvedByUserId: "admin1", denyReason: "no valid character screenshot" }),
     );
+  });
+
+  it("refuses to resolve a request that's no longer Pending", async () => {
+    vi.mocked(signupRequestsRepo.getRequestById).mockResolvedValue(requestRow({ status: "Denied" }));
+
+    const result = await denySignup("req1", "admin1", "reason");
+
+    expect(result.ok).toBe(false);
+    expect(signupRequestsRepo.updateRequest).not.toHaveBeenCalled();
   });
 });

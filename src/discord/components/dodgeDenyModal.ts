@@ -1,6 +1,7 @@
 import { EmbedBuilder, type ModalSubmitInteraction, type GuildMember } from "discord.js";
 import * as dodgesRepo from "../../sheets/dodgesRepo.js";
 import { resolveDodge } from "../../domain/dodgeService.js";
+import { enqueueResolution } from "../../domain/resolutionQueue.js";
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation, deleteMessageByUrl } from "../notify.js";
 import { DENY_MODAL_PREFIX, DENY_REASON_INPUT_ID } from "./dodgeButtons.js";
@@ -23,7 +24,18 @@ export async function handleDodgeDenyModal(interaction: ModalSubmitInteraction):
   }
 
   const reason = interaction.fields.getTextInputValue(DENY_REASON_INPUT_ID);
-  await resolveDodge(dodge, interaction.user.id, false, reason);
+  const resolution = await enqueueResolution(async () => {
+    const fresh = await dodgesRepo.getDodgeById(dodgeId);
+    if (!fresh || fresh.status !== "Pending") return { ok: false as const };
+    await resolveDodge(fresh, interaction.user.id, false, reason);
+    return { ok: true as const };
+  });
+
+  if (!resolution.ok) {
+    await interaction.reply({ content: "This dodge request has already been resolved.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
 
   await interaction.reply({ content: "Dodge request denied and the requester has been notified.", ephemeral: true });
   scheduleReplyCleanup(interaction);

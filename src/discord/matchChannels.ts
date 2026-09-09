@@ -109,11 +109,15 @@ export async function createMatchChannel(
     )
     .setColor(0xe67e22);
 
-  await channel.send({
+  const sent = await channel.send({
     content: `<@${challenger.discordUserId}> <@${defender.discordUserId}>`,
     embeds: [embed],
     components: [matchActionRow(match.matchId)],
   });
+  // Pinned so expireMatchChannel() can find and edit this exact message later — matches only ever
+  // get one channel post like this, so being findable via fetchPins is enough (same trick as the
+  // Active Challenges panel).
+  await sent.pin().catch((err) => console.error(`Failed to pin match channel message for ${match.matchId}:`, err));
 
   return channel;
 }
@@ -127,5 +131,44 @@ export async function closeMatchChannel(client: Client, match: MatchRow, reason:
     }
   } catch (err) {
     console.error(`Failed to delete match channel ${match.channelId} for match ${match.matchId}:`, err);
+  }
+}
+
+/**
+ * Unlike every other resolution, an expired match's channel is deliberately left in place (so
+ * there's somewhere to review what happened) instead of being deleted — see closeMatchChannel.
+ * Left untouched, though, its original post keeps showing a live "Match expires <t:R>" countdown
+ * that just ticks into "expired 3 days ago" and keeps climbing forever, plus action buttons that
+ * still look clickable. Edit that post in place to a static, no-longer-ticking notice and drop
+ * the buttons, so the channel reads as closed rather than still running.
+ */
+export async function expireMatchChannel(client: Client, match: MatchRow): Promise<void> {
+  if (!match.channelId) return;
+  try {
+    const channel = await client.channels.fetch(match.channelId);
+    if (!channel?.isTextBased()) return;
+    const textChannel = channel as TextChannel;
+
+    const { items: pinned } = await textChannel.messages.fetchPins();
+    const original = pinned.find(
+      ({ message: m }) => m.author.id === client.user?.id && m.embeds.some((e) => e.title === "Match channel"),
+    )?.message;
+
+    const expiresUnix = Math.floor(Date.parse(match.expiresAt) / 1000);
+    const description =
+      `⚔️ <@${match.challengerUserId}> (**${formatElement(match.challengerElement)}**) vs <@${match.defenderUserId}> (**${formatElement(match.defenderElement)}**)\n\n` +
+      `⌛ This match expired <t:${expiresUnix}:F> with no result reported. No rank change — both players are free to challenge/be challenged again.\n\n` +
+      `This channel is left in place for reference; a League Manager can delete it once it's no longer needed.`;
+    const embed = new EmbedBuilder().setTitle("Match channel (expired)").setDescription(description).setColor(0x7f8c8d);
+
+    if (original) {
+      await original.edit({ embeds: [embed], components: [] });
+    } else {
+      // Original post couldn't be located (unpinned by hand, etc.) — post a fresh static notice
+      // rather than leave the channel with no expiry record at all.
+      await textChannel.send({ embeds: [embed] });
+    }
+  } catch (err) {
+    console.error(`Failed to update expired match channel ${match.channelId} for match ${match.matchId}:`, err);
   }
 }

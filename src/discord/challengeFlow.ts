@@ -125,7 +125,10 @@ export async function attemptChallenge(
     .setTitle("New challenge")
     .setDescription(
       `⚔️ <@${challengerEntry.discordUserId}> (**${formatElement(challengerEntry.element)}**, rank ${challengerEntry.rank}) has challenged <@${defenderEntry.discordUserId}> (**${formatElement(defenderEntry.element)}**, rank ${defenderEntry.rank})!\n\n` +
-        `Match ID: \`${match.matchId}\`\nExpires: <t:${expiresUnix}:F> (<t:${expiresUnix}:R>)${channelMention}`,
+        // Static (:F) only — this post is a permanent log entry that's never edited or removed
+        // once the match resolves, so a live-ticking (:R) countdown would keep counting up into a
+        // misleading "expired 3 weeks ago" long after the match is done.
+        `Match ID: \`${match.matchId}\`\nExpires: <t:${expiresUnix}:F>${channelMention}`,
     )
     .setColor(0xe67e22);
   await notify.challenges(interaction.client, {

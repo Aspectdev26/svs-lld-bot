@@ -106,8 +106,9 @@ requests with screenshot evidence.
   **Current Challenges** category, visible only to the two participants and the `League Manager` role. It comes
   with **Report Win**, **Request Dodge**, and **Request Extension** buttons, and is deleted automatically once a
   result is reported or a dodge is approved (not on plain expiry — an expired match's channel is left in place in
-  case a League Manager wants to review it; delete it manually or ask me to add auto-cleanup there too if you'd
-  rather it disappear).
+  case a League Manager wants to review it; delete it manually if you'd rather it disappear). On expiry the original
+  post is edited in place to a static "expired" notice with the buttons removed, so it stops looking active — before
+  that fix its live countdown (`<t:...:R>`) just kept climbing into a misleading "expired 3 weeks ago" forever.
 - **Win reporting**: either participant can report a result — via `/report-win` or the channel's **Report Win**
   button — no confirmation step. Both surface a **dropdown to pick who actually won** (both players' character
   names, nothing pre-selected — Discord clients can silently swallow a "selection" of an option that's already
@@ -142,7 +143,10 @@ requests with screenshot evidence.
   extended twice or shopped to a second manager. The `Matches` tab's `ExtensionRequestedBy` column is the marker:
   once non-blank it is never cleared.
 - **Scheduler**: polls the `Matches` sheet every 10 minutes (configurable). Warns both players 24h before a match's
-  72h expiry, and auto-expires (no rank change) matches that go the full 72h with no result.
+  72h expiry, and auto-expires (no rank change) matches that go the full 72h with no result. Both that warning post
+  and the original "New challenge" post in the results channel use a static timestamp rather than a live-updating
+  one, since neither is ever edited or removed once the match resolves — a live one would just keep ticking upward
+  into a misleading "expired N weeks ago" long after the match is done.
 - **League Manager dashboard**: a pinned message in `#league-managers` with eleven buttons, all gated to the
   `League Manager` role (the panel refreshes itself in place on every bot restart, so adding buttons in a future
   update doesn't require deleting the old pinned post by hand). All buttons are blue except **Ban Player** and
@@ -307,8 +311,9 @@ league. To speed up expiry/warning testing, temporarily lower `MATCH_LIFESPAN_MS
    pinged in the results channel if DMs are off) with the reason, and the original request post in
    `#league-managers` is deleted the same way.
 8. Let a match sit past the warning threshold — confirm both players get tagged in the results channel; let it run
-   past the full expiry — confirm it's marked `Expired` with no rank change (its match channel is left in place),
-   a permanent "Match expired" post lands in the results channel, and it drops off the **Active Challenges** list.
+   past the full expiry — confirm it's marked `Expired` with no rank change (its match channel is left in place, but
+   its original post is edited to a static "expired" notice with no buttons and no live countdown), a permanent
+   "Match expired" post lands in the results channel, and it drops off the **Active Challenges** list.
 9. Click **Request Extension** in a match channel — confirm the request lands in `#league-managers`; **Approve**
    should push the match's expiry back 2 days and re-arm the warning; **Deny** should leave the expiry untouched.
    Try requesting a second extension while one is already pending — confirm it's rejected, and try again after the

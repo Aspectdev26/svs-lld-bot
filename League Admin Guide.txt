@@ -88,8 +88,9 @@ WHAT PLAYERS CAN DO
 
 5. REQUEST AN EXTENSION
    - "Request Extension" button in the match channel — asks for 2 extra days.
-   - Goes to #league-managers for Approve/Deny. Only one extension request can be
-     pending on a match at a time.
+   - Goes to #league-managers for Approve/Deny. A match gets ONE extension request,
+     ever — once it has been approved or denied, the button stops working for that
+     match. Denying spends it too, so deny only when you mean it.
 
 6. LEAVE THE LADDER
    - "Leave Ladder" button in #register.

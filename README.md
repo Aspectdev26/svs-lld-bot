@@ -137,7 +137,10 @@ requests with screenshot evidence.
   or decremented by anything, same as that tab's `Wins`/`Losses`/`Defends`.
 - **Extensions**: either participant can hit **Request Extension** in their match channel to ask for 2 extra days.
   It posts to `#league-managers` with Approve/Deny buttons; Approve pushes the match's expiry back by
-  `EXTENSION_GRANT_MS` (default 2 days) and re-arms the 24h-before-expiry warning.
+  `EXTENSION_GRANT_MS` (default 2 days) and re-arms the 24h-before-expiry warning. **One extension request per
+  match, for the life of the match** — a denied request is spent just like an approved one, so a match can never be
+  extended twice or shopped to a second manager. The `Matches` tab's `ExtensionRequestedBy` column is the marker:
+  once non-blank it is never cleared.
 - **Scheduler**: polls the `Matches` sheet every 10 minutes (configurable). Warns both players 24h before a match's
   72h expiry, and auto-expires (no rank change) matches that go the full 72h with no result.
 - **League Manager dashboard**: a pinned message in `#league-managers` with eleven buttons, all gated to the
@@ -308,7 +311,8 @@ league. To speed up expiry/warning testing, temporarily lower `MATCH_LIFESPAN_MS
    a permanent "Match expired" post lands in the results channel, and it drops off the **Active Challenges** list.
 9. Click **Request Extension** in a match channel — confirm the request lands in `#league-managers`; **Approve**
    should push the match's expiry back 2 days and re-arm the warning; **Deny** should leave the expiry untouched.
-   Try requesting a second extension while one is already pending — confirm it's rejected. Either way, confirm the
+   Try requesting a second extension while one is already pending — confirm it's rejected, and try again after the
+   first request has been resolved — confirm that's rejected too, after both an Approve and a Deny. Either way, confirm the
    original request post in `#league-managers` is deleted and replaced briefly by an auto-deleting confirmation.
 10. Click **Request Dodge** in a match channel, post a screenshot as instructed, then click **Submit Dodge
     Request** — confirm it reaches `#league-managers` the same way `/dodge-request` does.

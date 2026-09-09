@@ -3,6 +3,7 @@ import { config } from "../../config.js";
 import * as matchesRepo from "../../sheets/matchesRepo.js";
 import * as ladderRepo from "../../sheets/ladderRepo.js";
 import * as pointsService from "../../domain/pointsService.js";
+import { enqueueResolution } from "../../domain/resolutionQueue.js";
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation } from "../notify.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
@@ -32,19 +33,35 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
   await interaction.deferUpdate();
 
   if (action === "extend_approve") {
-    const newExpiresAt = new Date(Date.parse(match.expiresAt) + config.timing.extensionGrantMs).toISOString();
-    await matchesRepo.setExpiresAt(match.sheetRow, newExpiresAt);
-    await matchesRepo.setExtensionPending(match.sheetRow, false);
-    await matchesRepo.setWarningSentAt(match.sheetRow, ""); // let the scheduler re-warn ahead of the new expiry
+    // Serialize through the shared resolution queue and re-check ExtensionPending from inside it:
+    // a match only ever gets one extension, so two managers both hitting Approve before either
+    // write lands must not stack two grants onto the same match. See resolutionQueue.ts.
+    const resolution = await enqueueResolution(async () => {
+      const fresh = await matchesRepo.getMatchById(matchId);
+      if (!fresh || fresh.status !== "Pending" || !fresh.extensionPending) return { ok: false as const };
 
-    if (match.extensionRequestedByUserId) {
-      const requesterElement =
-        match.extensionRequestedByUserId === match.challengerUserId ? match.challengerElement : match.defenderElement;
-      const requesterEntry = await ladderRepo.findEntry(match.extensionRequestedByUserId, requesterElement);
-      if (requesterEntry) {
-        await pointsService.recordExtensionRequested(requesterEntry.discordUserId, requesterEntry.discordName);
+      const newExpiresAt = new Date(Date.parse(fresh.expiresAt) + config.timing.extensionGrantMs).toISOString();
+      await matchesRepo.setExpiresAt(fresh.sheetRow, newExpiresAt);
+      await matchesRepo.setExtensionPending(fresh.sheetRow, false);
+      await matchesRepo.setWarningSentAt(fresh.sheetRow, ""); // let the scheduler re-warn ahead of the new expiry
+
+      if (fresh.extensionRequestedByUserId) {
+        const requesterElement =
+          fresh.extensionRequestedByUserId === fresh.challengerUserId ? fresh.challengerElement : fresh.defenderElement;
+        const requesterEntry = await ladderRepo.findEntry(fresh.extensionRequestedByUserId, requesterElement);
+        if (requesterEntry) {
+          await pointsService.recordExtensionRequested(requesterEntry.discordUserId, requesterEntry.discordName);
+        }
       }
+
+      return { ok: true as const, newExpiresAt };
+    });
+
+    if (!resolution.ok) {
+      await postAutoDeletingConfirmation(interaction.client, "This extension request was already resolved by another League Manager.");
+      return;
     }
+    const { newExpiresAt } = resolution;
 
     await interaction.message.delete().catch(() => undefined);
     await postAutoDeletingConfirmation(interaction.client, `✅ Extension approved by <@${interaction.user.id}>.`);
@@ -73,8 +90,19 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
     return;
   }
 
-  // Deny
-  await matchesRepo.setExtensionPending(match.sheetRow, false);
+  // Deny. Denying spends the match's one extension request just like approving does — only
+  // ExtensionPending is cleared, and ExtensionRequestedBy stays set to block a second request.
+  const denied = await enqueueResolution(async () => {
+    const fresh = await matchesRepo.getMatchById(matchId);
+    if (!fresh || fresh.status !== "Pending" || !fresh.extensionPending) return false;
+    await matchesRepo.setExtensionPending(fresh.sheetRow, false);
+    return true;
+  });
+
+  if (!denied) {
+    await postAutoDeletingConfirmation(interaction.client, "This extension request was already resolved by another League Manager.");
+    return;
+  }
 
   await interaction.message.delete().catch(() => undefined);
   await postAutoDeletingConfirmation(interaction.client, `❌ Extension denied by <@${interaction.user.id}>.`);

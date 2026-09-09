@@ -103,7 +103,7 @@ export async function createMatchChannel(
         `Use this channel to arrange and play your match. Match expires <t:${expiresUnix}:F> (<t:${expiresUnix}:R>).\n\n` +
         `**Report Win** — either player can self-report the result once the match is played.\n` +
         `**Request Dodge** — if your opponent hasn't responded in 24+ hours, request a dodge (you'll need a screenshot).\n` +
-        `**Request Extension** — ask a League Manager for 2 extra days if you both need more time.\n` +
+        `**Request Extension** — ask a League Manager for 2 extra days if you both need more time. One request per match, so make it count.\n` +
         `**Cancel Match** — voids the match with no rank change. Both players must click it to confirm.\n\n` +
         `This channel is deleted automatically once a result is reported, a dodge is approved, or the match is cancelled.`,
     )

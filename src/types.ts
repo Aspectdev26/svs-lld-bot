@@ -75,7 +75,11 @@ export interface MatchRow {
   extensionPending: boolean;
   /** Discord user ID of whichever participant first requested to cancel this match; blank if none. Both participants must request to actually cancel. */
   cancelRequestedByUserId: string;
-  /** Discord user ID of whoever most recently requested an extension on this match; blank if none yet. */
+  /**
+   * Discord user ID of whoever requested this match’s one extension; blank until one is requested.
+   * Nothing ever clears it — a non-blank value permanently marks the match’s single allowed extension
+   * request as spent, whether it was approved or denied.
+   */
   extensionRequestedByUserId: string;
 }
 

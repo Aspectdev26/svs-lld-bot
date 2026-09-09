@@ -9,6 +9,7 @@ import { config } from "../../config.js";
 import * as matchesRepo from "../../sheets/matchesRepo.js";
 import * as matchService from "../../domain/matchService.js";
 import { isDodgeEligible } from "../../domain/dodgeService.js";
+import { enqueueResolution } from "../../domain/resolutionQueue.js";
 import { submitDodgeRequest } from "../dodgeFlow.js";
 import { buildWinnerPrompt } from "../reportWinFlow.js";
 import { notify } from "../notify.js";
@@ -16,6 +17,9 @@ import { closeMatchChannel } from "../matchChannels.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
 import { formatElement } from "../../util/formatElement.js";
 import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
+
+const EXTENSION_ALREADY_USED =
+  "This match has already used its one extension request — a match can only be extended once.";
 
 async function handleReportWin(interaction: ButtonInteraction, matchId: string): Promise<void> {
   const prompt = await buildWinnerPrompt(matchId, interaction.user.id);
@@ -87,6 +91,12 @@ async function handleDodgeSubmit(interaction: ButtonInteraction, matchId: string
   await submitDodgeRequest(interaction, match, screenshot);
 }
 
+/**
+ * A match gets exactly one extension request for its lifetime, approved or not: a non-blank
+ * `extensionRequestedByUserId` is the permanent "already used" marker, and nothing ever clears it
+ * (denying only clears `extensionPending`). So a denied request is spent too — players can't shop
+ * a second request around to a different League Manager.
+ */
 async function handleExtensionRequest(interaction: ButtonInteraction, matchId: string): Promise<void> {
   const match = await matchesRepo.getMatchById(matchId);
   if (!match || match.status !== "Pending") {
@@ -104,10 +114,43 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
     scheduleReplyCleanup(interaction);
     return;
   }
+  if (match.extensionRequestedByUserId) {
+    await interaction.reply({ content: EXTENSION_ALREADY_USED, ephemeral: true });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
 
   await interaction.deferReply({ ephemeral: true });
-  await matchesRepo.setExtensionPending(match.sheetRow, true);
-  await matchesRepo.setExtensionRequestedBy(match.sheetRow, interaction.user.id);
+
+  // Claim the match's single extension through the shared resolution queue, re-checking from
+  // inside it: the checks above are only a fast path, and both participants clicking at the same
+  // moment would otherwise each read a blank ExtensionRequestedBy and file their own request.
+  // ExtensionRequestedBy is written before ExtensionPending so a failure between the two writes
+  // fails closed (the extension counts as used) rather than leaving the match re-requestable.
+  const claim = await enqueueResolution(async () => {
+    const fresh = await matchesRepo.getMatchById(matchId);
+    if (!fresh || fresh.status !== "Pending") return { ok: false as const, reason: "notActive" as const };
+    if (fresh.extensionPending) return { ok: false as const, reason: "pending" as const };
+    if (fresh.extensionRequestedByUserId) return { ok: false as const, reason: "used" as const };
+
+    await matchesRepo.setExtensionRequestedBy(fresh.sheetRow, interaction.user.id);
+    await matchesRepo.setExtensionPending(fresh.sheetRow, true);
+    return { ok: true as const };
+  });
+
+  if (!claim.ok) {
+    await interaction.editReply({
+      content:
+        claim.reason === "notActive"
+          ? "That match isn't currently active."
+          : claim.reason === "pending"
+            ? "An extension request for this match is already pending review."
+            : EXTENSION_ALREADY_USED,
+    });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
+
   await interaction.editReply({ content: "Extension request submitted to League Managers for review." });
   scheduleReplyCleanup(interaction);
 
@@ -117,7 +160,8 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
     .setDescription(
       `⏳ <@${interaction.user.id}> requested a 2-day extension for match \`${match.matchId}\`\n` +
         `(<@${match.challengerUserId}> vs <@${match.defenderUserId}>, ${formatElement(match.challengerElement)} vs ${formatElement(match.defenderElement)}).\n` +
-        `Current expiry: <t:${Math.floor(Date.parse(match.expiresAt) / 1000)}:F>`,
+        `Current expiry: <t:${Math.floor(Date.parse(match.expiresAt) / 1000)}:F>\n` +
+        `This is the match’s only extension request — denying it means no further requests.`,
     )
     .setColor(0xf39c12);
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

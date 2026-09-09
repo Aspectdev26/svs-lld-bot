@@ -38,7 +38,7 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "resets to 0 whenever the entry is removed (dodge-removed, banned, or manually removed) or the season " +
         "ends — separate from the **All Time Stats** tab's own dodge total, which is permanent and never reset " +
         "or decremented, same as its Wins/Losses/Defends.\n\n" +
-        "**Extension** → +2 days on a match, one pending request at a time, comes here for Approve/Deny.\n\n" +
+        "**Extension** → +2 days on a match, one request per match (denying spends it too), comes here for Approve/Deny.\n\n" +
         "**Leave Ladder** → a player can remove one of their own entries any time. An active match on it is " +
         "recorded as a loss for them first. Not reversible.\n\n" +
         "**Vacation (self-service)** → *Request Vacation* in #register needs League Manager Approve/Deny here " +

@@ -4,11 +4,11 @@ import {
   ButtonStyle,
   ChannelType,
   EmbedBuilder,
-  OverwriteType,
   PermissionFlagsBits,
   type Client,
   type Guild,
   type TextChannel,
+  type ThreadChannel,
 } from "discord.js";
 import { config } from "../config.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
@@ -23,14 +23,36 @@ function slug(name: string): string {
     .slice(0, 40);
 }
 
-async function getOrCreateChallengeCategory(guild: Guild) {
-  const existing = guild.channels.cache.find(
-    (c) => c.type === ChannelType.GuildCategory && c.name === config.matchChannels.categoryName,
-  );
-  if (existing) return existing;
-  return guild.channels.create({
-    name: config.matchChannels.categoryName,
-    type: ChannelType.GuildCategory,
+/** The #challenges channel doubles as the parent every match thread is created under. */
+async function getChallengesParentChannel(client: Client): Promise<TextChannel | null> {
+  const channel = await client.channels.fetch(config.channels.challenges);
+  if (!channel || channel.type !== ChannelType.GuildText) {
+    console.error(`CHALLENGES_CHANNEL_ID (${config.channels.challenges}) is not a text channel`);
+    return null;
+  }
+  return channel;
+}
+
+/**
+ * Idempotently grants the League Manager role ManageThreads (+ view/send-in-threads) on
+ * #challenges, so any League Manager can see and join every match thread without being
+ * individually added to each one — the thread equivalent of the old per-channel
+ * `permissionOverwrites` grant. Call once at startup.
+ */
+export async function ensureLeagueManagerThreadAccess(client: Client): Promise<void> {
+  const parent = await getChallengesParentChannel(client);
+  if (!parent) return;
+  const leagueManagerRole = parent.guild.roles.cache.find((r) => r.name === config.leagueManagerRoleName);
+  if (!leagueManagerRole) return;
+
+  const needed = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessagesInThreads, PermissionFlagsBits.ManageThreads];
+  const existing = parent.permissionOverwrites.cache.get(leagueManagerRole.id);
+  if (existing && needed.every((bit) => existing.allow.has(bit))) return;
+
+  await parent.permissionOverwrites.edit(leagueManagerRole, {
+    ViewChannel: true,
+    SendMessagesInThreads: true,
+    ManageThreads: true,
   });
 }
 
@@ -52,74 +74,54 @@ export async function createMatchChannel(
   match: MatchRow,
   challenger: LadderRow,
   defender: LadderRow,
-): Promise<TextChannel> {
-  const category = await getOrCreateChallengeCategory(guild);
-  const leagueManagerRole = guild.roles.cache.find((r) => r.name === config.leagueManagerRoleName);
+): Promise<ThreadChannel> {
+  const parent = await getChallengesParentChannel(client);
+  if (!parent) {
+    throw new Error(`Cannot create match thread: CHALLENGES_CHANNEL_ID (${config.channels.challenges}) is not a text channel`);
+  }
 
-  const channel = await guild.channels.create({
+  // Private + not invitable: only the two participants (added below) and anyone with
+  // ManageThreads on the parent (League Managers, via ensureLeagueManagerThreadAccess) can see or
+  // join it — participants can't add outside spectators themselves.
+  const thread = await parent.threads.create({
     name: `challenge-${slug(challenger.characterName)}-vs-${slug(defender.characterName)}`,
-    type: ChannelType.GuildText,
-    parent: category.id,
-    topic: `Match ${match.matchId}: ${challenger.characterName} (${formatElement(challenger.element)}) vs ${defender.characterName} (${formatElement(defender.element)})`,
-    // Explicit `type` on every overwrite: without it, discord.js tries to resolve each id against
-    // its User/Role caches to guess the type, and throws if the user isn't cached (likely here,
-    // since the bot doesn't proactively cache all guild members).
-    permissionOverwrites: [
-      { id: guild.roles.everyone.id, type: OverwriteType.Role, deny: [PermissionFlagsBits.ViewChannel] },
-      {
-        id: challenger.discordUserId,
-        type: OverwriteType.Member,
-        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles],
-      },
-      {
-        id: defender.discordUserId,
-        type: OverwriteType.Member,
-        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles],
-      },
-      {
-        id: client.user!.id,
-        type: OverwriteType.Member,
-        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ReadMessageHistory],
-      },
-      ...(leagueManagerRole
-        ? [
-            {
-              id: leagueManagerRole.id,
-              type: OverwriteType.Role,
-              allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-            },
-          ]
-        : []),
-    ],
+    type: ChannelType.PrivateThread,
+    invitable: false,
+    // 7 days: comfortably outlasts the 24h dodge window plus a 2-day extension, so an active
+    // match's thread never auto-archives out from under it.
+    autoArchiveDuration: 10080,
+    reason: `Match ${match.matchId}`,
   });
 
-  await matchesRepo.setChannelId(match.sheetRow, channel.id);
+  await Promise.all([thread.members.add(challenger.discordUserId), thread.members.add(defender.discordUserId)]);
+
+  await matchesRepo.setChannelId(match.sheetRow, thread.id);
 
   const expiresUnix = Math.floor(Date.parse(match.expiresAt) / 1000);
   const embed = new EmbedBuilder()
-    .setTitle("Match channel")
+    .setTitle("Match thread")
     .setDescription(
       `⚔️ <@${challenger.discordUserId}> (**${formatElement(challenger.element)}**) vs <@${defender.discordUserId}> (**${formatElement(defender.element)}**)\n\n` +
-        `Use this channel to arrange and play your match. Match expires <t:${expiresUnix}:F> (<t:${expiresUnix}:R>).\n\n` +
+        `Use this thread to arrange and play your match. Match expires <t:${expiresUnix}:F> (<t:${expiresUnix}:R>).\n\n` +
         `**Report Win** — either player can self-report the result once the match is played.\n` +
         `**Request Dodge** — if your opponent hasn't responded in 24+ hours, request a dodge (you'll need a screenshot).\n` +
         `**Request Extension** — ask a League Manager for 2 extra days if you both need more time. One request per match, so make it count.\n` +
         `**Cancel Match** — voids the match with no rank change. Both players must click it to confirm.\n\n` +
-        `This channel is deleted automatically once a result is reported, a dodge is approved, or the match is cancelled.`,
+        `This thread is deleted automatically once a result is reported, a dodge is approved, or the match is cancelled.`,
     )
     .setColor(0xe67e22);
 
-  const sent = await channel.send({
+  const sent = await thread.send({
     content: `<@${challenger.discordUserId}> <@${defender.discordUserId}>`,
     embeds: [embed],
     components: [matchActionRow(match.matchId)],
   });
   // Pinned so expireMatchChannel() can find and edit this exact message later — matches only ever
-  // get one channel post like this, so being findable via fetchPins is enough (same trick as the
+  // get one thread post like this, so being findable via fetchPins is enough (same trick as the
   // Active Challenges panel).
-  await sent.pin().catch((err) => console.error(`Failed to pin match channel message for ${match.matchId}:`, err));
+  await sent.pin().catch((err) => console.error(`Failed to pin match thread message for ${match.matchId}:`, err));
 
-  return channel;
+  return thread;
 }
 
 export async function closeMatchChannel(client: Client, match: MatchRow, reason: string): Promise<void> {
@@ -127,48 +129,54 @@ export async function closeMatchChannel(client: Client, match: MatchRow, reason:
   try {
     const channel = await client.channels.fetch(match.channelId);
     if (channel?.isTextBased() && "delete" in channel) {
-      await (channel as TextChannel).delete(reason);
+      await channel.delete(reason);
     }
   } catch (err) {
-    console.error(`Failed to delete match channel ${match.channelId} for match ${match.matchId}:`, err);
+    console.error(`Failed to delete match thread ${match.channelId} for match ${match.matchId}:`, err);
   }
 }
 
 /**
- * Unlike every other resolution, an expired match's channel is deliberately left in place (so
+ * Unlike every other resolution, an expired match's thread is deliberately left in place (so
  * there's somewhere to review what happened) instead of being deleted — see closeMatchChannel.
  * Left untouched, though, its original post keeps showing a live "Match expires <t:R>" countdown
  * that just ticks into "expired 3 days ago" and keeps climbing forever, plus action buttons that
- * still look clickable. Edit that post in place to a static, no-longer-ticking notice and drop
- * the buttons, so the channel reads as closed rather than still running.
+ * still look clickable. Edit that post in place to a static, no-longer-ticking notice, drop the
+ * buttons, and archive the thread so it drops out of the active list on its own.
  */
 export async function expireMatchChannel(client: Client, match: MatchRow): Promise<void> {
   if (!match.channelId) return;
   try {
-    const channel = await client.channels.fetch(match.channelId);
-    if (!channel?.isTextBased()) return;
-    const textChannel = channel as TextChannel;
+    const fetched = await client.channels.fetch(match.channelId);
+    if (!fetched?.isTextBased()) return;
+    const channel = fetched as TextChannel | ThreadChannel;
 
-    const { items: pinned } = await textChannel.messages.fetchPins();
+    const { items: pinned } = await channel.messages.fetchPins();
     const original = pinned.find(
-      ({ message: m }) => m.author.id === client.user?.id && m.embeds.some((e) => e.title === "Match channel"),
+      ({ message: m }) => m.author.id === client.user?.id && m.embeds.some((e) => e.title === "Match thread"),
     )?.message;
 
     const expiresUnix = Math.floor(Date.parse(match.expiresAt) / 1000);
     const description =
       `⚔️ <@${match.challengerUserId}> (**${formatElement(match.challengerElement)}**) vs <@${match.defenderUserId}> (**${formatElement(match.defenderElement)}**)\n\n` +
       `⌛ This match expired <t:${expiresUnix}:F> with no result reported. No rank change — both players are free to challenge/be challenged again.\n\n` +
-      `This channel is left in place for reference; a League Manager can delete it once it's no longer needed.`;
-    const embed = new EmbedBuilder().setTitle("Match channel (expired)").setDescription(description).setColor(0x7f8c8d);
+      `This thread is archived for reference; a League Manager can delete it once it's no longer needed.`;
+    const embed = new EmbedBuilder().setTitle("Match thread (expired)").setDescription(description).setColor(0x7f8c8d);
 
     if (original) {
       await original.edit({ embeds: [embed], components: [] });
     } else {
       // Original post couldn't be located (unpinned by hand, etc.) — post a fresh static notice
-      // rather than leave the channel with no expiry record at all.
-      await textChannel.send({ embeds: [embed] });
+      // rather than leave the thread with no expiry record at all.
+      await channel.send({ embeds: [embed] });
+    }
+
+    if (channel.isThread()) {
+      await channel
+        .setArchived(true, "Match expired")
+        .catch((err) => console.error(`Failed to archive expired match thread ${match.channelId} for match ${match.matchId}:`, err));
     }
   } catch (err) {
-    console.error(`Failed to update expired match channel ${match.channelId} for match ${match.matchId}:`, err);
+    console.error(`Failed to update expired match thread ${match.channelId} for match ${match.matchId}:`, err);
   }
 }

@@ -55,9 +55,6 @@ export const config = {
     topTierSize: int("TOP_TIER_SIZE", 10),
     topTierChallengeRange: int("TOP_TIER_CHALLENGE_RANGE", 2),
   },
-  matchChannels: {
-    categoryName: process.env.MATCH_CHANNEL_CATEGORY_NAME || "Current Challenges",
-  },
   health: {
     port: int("HEALTH_PORT", 3103),
   },

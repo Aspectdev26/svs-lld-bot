@@ -69,7 +69,7 @@ export interface MatchRow {
   warningSentAt: string;
   winnerUserId: string;
   resolvedAt: string;
-  /** ID of the private per-match Discord channel under "Current Challenges", if one was created. */
+  /** ID of the private per-match Discord thread under #challenges, if one was created. */
   channelId: string;
   /** True while an extension request for this match is awaiting League Manager approval. */
   extensionPending: boolean;

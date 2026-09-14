@@ -1,4 +1,4 @@
-import { EmbedBuilder, type ButtonInteraction, type GuildMember, type TextChannel } from "discord.js";
+import { EmbedBuilder, type ButtonInteraction, type GuildMember, type TextChannel, type ThreadChannel } from "discord.js";
 import { config } from "../../config.js";
 import * as matchesRepo from "../../sheets/matchesRepo.js";
 import * as ladderRepo from "../../sheets/ladderRepo.js";
@@ -68,7 +68,7 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
 
     const newExpiresUnix = Math.floor(Date.parse(newExpiresAt) / 1000);
     if (matchChannel?.isTextBased()) {
-      await (matchChannel as TextChannel).send({
+      await (matchChannel as TextChannel | ThreadChannel).send({
         content: `<@${match.challengerUserId}> <@${match.defenderUserId}>`,
         embeds: [
           new EmbedBuilder()
@@ -108,7 +108,7 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
   await postAutoDeletingConfirmation(interaction.client, `❌ Extension denied by <@${interaction.user.id}>.`);
 
   if (matchChannel?.isTextBased()) {
-    await (matchChannel as TextChannel).send({
+    await (matchChannel as TextChannel | ThreadChannel).send({
       content: `<@${match.challengerUserId}> <@${match.defenderUserId}>`,
       embeds: [
         new EmbedBuilder()

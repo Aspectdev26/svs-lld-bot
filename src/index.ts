@@ -8,6 +8,7 @@ import { startVacationWatcher } from "./scheduler/vacationWatcher.js";
 import { ensureRegisterPanel } from "./discord/registerPanel.js";
 import { ensureChallengePanel } from "./discord/challengePanel.js";
 import { ensureAdminPanel } from "./discord/adminPanel.js";
+import { ensureLeagueManagerThreadAccess } from "./discord/matchChannels.js";
 import { refreshTop10Panel } from "./discord/top10Panel.js";
 import { refreshActiveChallengesPanel } from "./discord/activeChallengesPanel.js";
 import { ensureSheetTabs } from "./sheets/sheetsClient.js";
@@ -69,6 +70,9 @@ async function main() {
     ensureRegisterPanel(client).catch((err) => console.error("Failed to post register panel:", err));
     ensureChallengePanel(client).catch((err) => console.error("Failed to post challenge panel:", err));
     ensureAdminPanel(client).catch((err) => console.error("Failed to post admin panel:", err));
+    ensureLeagueManagerThreadAccess(client).catch((err) =>
+      console.error("Failed to grant League Manager thread access:", err),
+    );
     refreshTop10Panel(client).catch((err) => console.error("Failed to post top 10 panel:", err));
     refreshActiveChallengesPanel(client).catch((err) => console.error("Failed to post active challenges panel:", err));
   });

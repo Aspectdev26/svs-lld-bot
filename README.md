@@ -74,7 +74,7 @@ requests with screenshot evidence.
   than drifting out of sequence over time.
 - **Ladder**: one combined ranking. Each player can hold up to 3 rows (one per element they've signed up with),
   each with its own rank number and its own **character name** (the primary display identity everywhere — ladder
-  listings, challenge targets, match channels — separate from the player's Discord name).
+  listings, challenge targets, match threads — separate from the player's Discord name).
 - **Elements always carry their emoji**: ❄️ Cold, ⚡ Light, 🔥 Fire — anywhere an element name shows up in a bot
   message, embed, select menu, or channel topic. The one exception is the rendered Top 10 leaderboard image, which
   uses its own color-coding instead since canvas-rendered emoji isn't reliable across platforms.
@@ -102,13 +102,15 @@ requests with screenshot evidence.
   character — unaffected by season resets or by the character being removed from (or rejoining) the ladder.
 - **One match per element**: a player can have up to 3 matches running at once (one per element), but a given
   element-entry can only be in one match at a time.
-- **Match channels**: issuing a challenge (`/challenge`) auto-creates a private text channel under the
-  **Current Challenges** category, visible only to the two participants and the `League Manager` role. It comes
-  with **Report Win**, **Request Dodge**, and **Request Extension** buttons, and is deleted automatically once a
-  result is reported or a dodge is approved (not on plain expiry — an expired match's channel is left in place in
-  case a League Manager wants to review it; delete it manually if you'd rather it disappear). On expiry the original
-  post is edited in place to a static "expired" notice with the buttons removed, so it stops looking active — before
-  that fix its live countdown (`<t:...:R>`) just kept climbing into a misleading "expired 3 weeks ago" forever.
+- **Match threads**: issuing a challenge (`/challenge`) auto-creates a private thread under **#challenges**, visible
+  only to the two participants; the `League Manager` role can see and join any match thread via a one-time
+  `ManageThreads` grant on `#challenges` instead of a per-thread overwrite. It comes with **Report Win**, **Request
+  Dodge**, and **Request Extension** buttons, and is deleted automatically once a result is reported or a dodge is
+  approved (not on plain expiry — an expired match's thread is left in place in case a League Manager wants to
+  review it, and auto-archives so it drops out of the active thread list; delete it manually if you'd rather it
+  disappear). On expiry the original post is edited in place to a static "expired" notice with the buttons removed,
+  so it stops looking active — before that fix its live countdown (`<t:...:R>`) just kept climbing into a misleading
+  "expired 3 weeks ago" forever.
 - **Win reporting**: either participant can report a result — via `/report-win` or the channel's **Report Win**
   button — no confirmation step. Both surface a **dropdown to pick who actually won** (both players' character
   names, nothing pre-selected — Discord clients can silently swallow a "selection" of an option that's already
@@ -121,10 +123,10 @@ requests with screenshot evidence.
   name) to toggle just that entry's status, leaving the player's other elements untouched. Unlike the self-service
   request flow, the admin toggle *blocks* instead of auto-forfeiting when the entry has a pending match.
 - **Dodges**: once 24h pass on a match with no result, either side can request a dodge — via `/dodge-request` with
-  a screenshot attachment, or the channel's **Request Dodge** button (which, since Discord buttons can't accept
-  file uploads, asks you to post the screenshot as a message in the channel first, then click **Submit Dodge
+  a screenshot attachment, or the thread's **Request Dodge** button (which, since Discord buttons can't accept
+  file uploads, asks you to post the screenshot as a message in the thread first, then click **Submit Dodge
   Request**). It posts to `#league-managers` with Approve/Deny buttons (gated to the `League Manager` role).
-  Approve swaps ranks in the challenger's favor and closes the match channel; Deny opens a reason modal and DMs
+  Approve swaps ranks in the challenger's favor and closes the match thread; Deny opens a reason modal and DMs
   the requester (falls back to a mention in the results channel if DMs are closed).
 - **Dodge counts (warning/auto-removal)**: each approved dodge adds 1 to the defender's `DodgesAgainst`. At 2, the
   defender gets a private warning DM plus a notice in `#league-managers`; at 3, their entry is automatically
@@ -136,7 +138,7 @@ requests with screenshot evidence.
   entry itself is removed (auto-removal, ban, or manual admin removal) — see below. This is separate from the
   `All Time Stats` tab's own `DodgesAgainst` column: a permanent, append-only historical total that's never reset
   or decremented by anything, same as that tab's `Wins`/`Losses`/`Defends`.
-- **Extensions**: either participant can hit **Request Extension** in their match channel to ask for 2 extra days.
+- **Extensions**: either participant can hit **Request Extension** in their match thread to ask for 2 extra days.
   It posts to `#league-managers` with Approve/Deny buttons; Approve pushes the match's expiry back by
   `EXTENSION_GRANT_MS` (default 2 days) and re-arms the 24h-before-expiry warning. **One extension request per
   match, for the life of the match** — a denied request is spent just like an approved one, so a match can never be
@@ -204,10 +206,11 @@ requests with screenshot evidence.
 1. Create an application + bot at https://discord.com/developers/applications.
 2. Under **Bot**, copy the token → `DISCORD_TOKEN`.
 3. Under **OAuth2 → General**, copy the **Application ID** → `DISCORD_CLIENT_ID`.
-4. Under **OAuth2 → URL Generator**: scopes `bot` + `applications.commands`; bot permissions: `Manage Channels`
-   (needed to create/delete per-match channels), `Manage Messages` (needed to pin the challenge panel), `View
-   Channels`, `Send Messages`, `Embed Links`, `Attach Files`, `Mention Everyone` (needed to ping the League Manager
-   role and players), `Read Message History`. Use the generated URL to invite the bot to your server.
+4. Under **OAuth2 → URL Generator**: scopes `bot` + `applications.commands`; bot permissions: `Create Private
+   Threads` + `Manage Threads` (needed to create/delete per-match threads), `Manage Messages` (needed to pin the
+   challenge panel), `View Channels`, `Send Messages`, `Send Messages in Threads`, `Embed Links`, `Attach Files`,
+   `Mention Everyone` (needed to ping the League Manager role and players), `Read Message History`. Use the
+   generated URL to invite the bot to your server.
 5. Enable Developer Mode in Discord (User Settings → Advanced), then right-click your server → Copy Server ID →
    `DISCORD_GUILD_ID`, and right-click each of the `#challenges` ("Issue a Challenge" — hosts the pinned Challenge
    button and Active Challenges list), the results channel (a permanent log of every challenge/result
@@ -288,15 +291,15 @@ league. To speed up expiry/warning testing, temporarily lower `MATCH_LIFESPAN_MS
 2. `/challenge` and the pinned **Challenge** button in `#challenges` — try a valid target, an out-of-range target,
    a top-10 target from too far below, a self-challenge, and a vacationing target, to see each rejection message.
    Try the button as an unregistered account too — confirm it replies with a "you're not registered" error instead
-   of doing anything. On a valid challenge, confirm a private channel appears under **Current Challenges** visible
+   of doing anything. On a valid challenge, confirm a private thread appears under **#challenges** visible
    only to the two participants + League Managers, a permanent "New challenge" post lands in the results channel,
    and the pinned **Active Challenges** list in `#challenges` updates in place to include it. Report a loss for the
    challenger, then immediately try challenging that same defender entry again — confirm it's rejected with a
    cooldown message naming when it lifts, while challenging a *different* eligible target still works.
-3. `/report-win` and the channel's **Report Win** button — confirm both show the winner dropdown with nothing
+3. `/report-win` and the thread's **Report Win** button — confirm both show the winner dropdown with nothing
    pre-selected. Try a normal self-report (pick your own name), then try picking the *opponent's* name instead
    (concede/correct) and confirm ranks only swap when the challenger is the one picked as winner. Confirm the
-   `Matches` row updates, the match channel is deleted either way, a permanent result post lands in the results
+   `Matches` row updates, the match thread is deleted either way, a permanent result post lands in the results
    channel, and the match drops off the pinned **Active Challenges** list.
 4. League Manager dashboard's **Vacation** button — pick one character from the dropdown, confirm its status flips
    on `Ladder` and it becomes un-challengeable/challengeable accordingly, while the player's other elements (if
@@ -311,20 +314,21 @@ league. To speed up expiry/warning testing, temporarily lower `MATCH_LIFESPAN_MS
    pinged in the results channel if DMs are off) with the reason, and the original request post in
    `#league-managers` is deleted the same way.
 8. Let a match sit past the warning threshold — confirm both players get tagged in the results channel; let it run
-   past the full expiry — confirm it's marked `Expired` with no rank change (its match channel is left in place, but
-   its original post is edited to a static "expired" notice with no buttons and no live countdown), a permanent
-   "Match expired" post lands in the results channel, and it drops off the **Active Challenges** list.
-9. Click **Request Extension** in a match channel — confirm the request lands in `#league-managers`; **Approve**
+   past the full expiry — confirm it's marked `Expired` with no rank change (its match thread is left in place and
+   auto-archives, but its original post is edited to a static "expired" notice with no buttons and no live
+   countdown), a permanent "Match expired" post lands in the results channel, and it drops off the **Active
+   Challenges** list.
+9. Click **Request Extension** in a match thread — confirm the request lands in `#league-managers`; **Approve**
    should push the match's expiry back 2 days and re-arm the warning; **Deny** should leave the expiry untouched.
    Try requesting a second extension while one is already pending — confirm it's rejected, and try again after the
    first request has been resolved — confirm that's rejected too, after both an Approve and a Deny. Either way, confirm the
    original request post in `#league-managers` is deleted and replaced briefly by an auto-deleting confirmation.
-10. Click **Request Dodge** in a match channel, post a screenshot as instructed, then click **Submit Dodge
+10. Click **Request Dodge** in a match thread, post a screenshot as instructed, then click **Submit Dodge
     Request** — confirm it reaches `#league-managers` the same way `/dodge-request` does.
 11. League Manager dashboard (pinned in `#league-managers`), with a few test accounts on the ladder:
     - **Set Rank** a player to a rank in the middle of the ladder — confirm everyone in between shifts by one and
       the ladder stays a clean 1..N in the `Ladder` tab.
-    - **Force-Cancel Match** an active match — confirm it's marked `Cancelled`, no rank change, its match channel
+    - **Force-Cancel Match** an active match — confirm it's marked `Cancelled`, no rank change, its match thread
       is deleted, a permanent post lands in the results channel, and it drops off the **Active Challenges** list.
     - **Remove Player** one element from a multi-element player — confirm just that row clears and ranks below it
       compact; confirm any match it was in gets cancelled too and drops off the **Active Challenges** list.

@@ -15,6 +15,7 @@ const CHALLENGE_ISSUED_WINDOW_MS = 7 * 24 * HOUR_MS;
 const EXTENSION_REQUESTED_POINTS = -1;
 const DODGE_AGAINST_POINTS = -3;
 const MATCH_EXPIRED_POINTS = -4;
+const DEFEND_POINTS = 4;
 
 /** Tiered bonus on top of MATCH_COMPLETED_POINTS, based on how fast the result came in. */
 export function speedBonus(createdAt: string, resolvedAt: string): number {
@@ -61,6 +62,11 @@ export async function recordMatchCompleted(
 
 export async function recordDodgeAgainst(discordUserId: string, discordName: string): Promise<void> {
   await pointsStore.addPoints(discordUserId, discordName, DODGE_AGAINST_POINTS);
+}
+
+/** Rank-1 title defense only — a challenger can never already hold rank 1, so this never applies to them. */
+export async function recordDefend(discordUserId: string, discordName: string): Promise<void> {
+  await pointsStore.addPoints(discordUserId, discordName, DEFEND_POINTS);
 }
 
 export async function recordMatchExpired(discordUserId: string, discordName: string): Promise<void> {

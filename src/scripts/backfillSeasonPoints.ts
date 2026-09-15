@@ -14,6 +14,7 @@ import * as ladderRepo from "../sheets/ladderRepo.js";
 import * as settingsRepo from "../sheets/settingsRepo.js";
 import * as pointsStore from "../domain/pointsStore.js";
 import * as pointsService from "../domain/pointsService.js";
+import * as seasonStatsRepo from "../sheets/seasonStatsRepo.js";
 import { SEASON_STATS_SHEET } from "../sheets/seasonStatsRepo.js";
 import type { LadderRow } from "../types.js";
 
@@ -55,6 +56,17 @@ async function main(): Promise<void> {
       await pointsService.recordMatchExpired(challengerEntry.discordUserId, challengerEntry.discordName);
     }
     // Cancelled / Pending: no points either way.
+  }
+
+  // Defends aren't derivable from a replay - the Matches sheet doesn't record what rank the
+  // defender held at match time, and the live ladder's current ranks don't reflect that either.
+  // The SeasonStats tab's own `Defends` column was already tallied correctly in real time (via
+  // rank1Tracker), so it's the authoritative source for this one - award it directly per character.
+  const seasonStats = await seasonStatsRepo.getAllRows();
+  for (const stat of seasonStats) {
+    for (let i = 0; i < stat.defends; i++) {
+      await pointsService.recordDefend(stat.discordUserId, stat.discordName);
+    }
   }
 
   const standings = await pointsStore.getStandings();

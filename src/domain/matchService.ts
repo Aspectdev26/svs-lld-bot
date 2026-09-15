@@ -170,12 +170,16 @@ export async function reportWin(reporterUserId: string, matchId: string, winnerU
     // a failure here (e.g. a corrupt points store) must not throw out of reportWin, since that
     // would stop the caller from posting the result announcement and closing the match channel.
     try {
-      await Promise.all([
+      const bookkeeping = [
         pointsService.recordMatchCompleted(challengerEntry.discordUserId, challengerEntry.discordName, match.createdAt, match.resolvedAt),
         pointsService.recordMatchCompleted(defenderEntry.discordUserId, defenderEntry.discordName, match.createdAt, match.resolvedAt),
         decrementDodgeCountIfAny(challengerEntry),
         decrementDodgeCountIfAny(defenderEntry),
-      ]);
+      ];
+      if (rank1Update.changed && rank1Update.kind === "defended") {
+        bookkeeping.push(pointsService.recordDefend(defenderEntry.discordUserId, defenderEntry.discordName));
+      }
+      await Promise.all(bookkeeping);
     } catch (err) {
       console.error(`Points/dodge-count bookkeeping failed for match ${match.matchId}:`, err);
     }

@@ -25,6 +25,7 @@ import { SETTINGS_SHEET, SETTINGS_HEADERS, getSettings } from "./sheets/settings
 import { applyLadderFormatting } from "./sheets/ladderFormatting.js";
 import { applyStandardTabFormatting } from "./sheets/sheetFormatting.js";
 import { startHealthServer } from "./health.js";
+import { retryOnNetworkError } from "./networkRetry.js";
 
 const NON_LADDER_TABS = [
   { name: MATCHES_SHEET, headers: MATCHES_HEADERS },
@@ -42,7 +43,9 @@ async function main() {
   let ready = false;
   startHealthServer(() => ready);
 
-  await ensureSheetTabs([{ name: LADDER_SHEET, headers: LADDER_HEADERS }, ...NON_LADDER_TABS]);
+  await retryOnNetworkError("Google Sheets", () =>
+    ensureSheetTabs([{ name: LADDER_SHEET, headers: LADDER_HEADERS }, ...NON_LADDER_TABS]),
+  );
 
   await applyLadderFormatting().catch((err) => console.error("Failed to apply Ladder sheet formatting:", err));
   for (const tab of NON_LADDER_TABS) {
@@ -51,7 +54,7 @@ async function main() {
     );
   }
   // The tab the current season's stats live in is dynamically named — not in the static list above.
-  const { currentSeasonName } = await getSettings();
+  const { currentSeasonName } = await retryOnNetworkError("Google Sheets", () => getSettings());
   if (currentSeasonName) {
     await applyStandardTabFormatting(currentSeasonName, SEASON_STATS_HEADERS.length).catch((err) =>
       console.error(`Failed to apply formatting to "${currentSeasonName}" tab:`, err),
@@ -77,7 +80,7 @@ async function main() {
     refreshActiveChallengesPanel(client).catch((err) => console.error("Failed to post active challenges panel:", err));
   });
 
-  await client.login(config.discord.token);
+  await retryOnNetworkError("Discord", () => client.login(config.discord.token));
 }
 
 main().catch((err) => {

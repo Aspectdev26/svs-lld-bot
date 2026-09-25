@@ -160,8 +160,11 @@ export async function returnFromExtendedVacation(evacRow: ExtendedVacationRow): 
   await setManualRank(added.sheetRow, evacRow.rankAtEntry + 1);
   await extendedVacationRepo.removeEntry(evacRow.sheetRow);
 
+  // setManualRank re-sorts the Ladder tab, so `added.sheetRow` now points at whoever sorted into
+  // the bottom row — re-find the returner by owner + element instead.
   const updatedLadder = await ladderRepo.getLadder();
-  const finalEntry = updatedLadder.find((r) => r.sheetRow === added.sheetRow) ?? added;
+  const finalEntry =
+    updatedLadder.find((r) => r.discordUserId === evacRow.discordUserId && r.element === evacRow.element) ?? added;
 
   const oldRankHolder = updatedLadder.find((r) => r.rank === evacRow.rankAtEntry && r.sheetRow !== finalEntry.sheetRow);
   if (!oldRankHolder) {

@@ -54,7 +54,6 @@ import { CHALLENGE_START_BUTTON_ID } from "../challengePanel.js";
 import { TARGET_SELECT_PREFIX } from "../challengeFlow.js";
 import { handleChallengeStartButton, handleChallengeTargetSelect } from "../components/challengeFlowButtons.js";
 import { ADMIN_BUTTON_IDS } from "../adminPanel.js";
-import { maybeTrollAdminAction } from "../troll.js";
 import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 import { handleShuffleStart, handleShuffleResolve, handleShuffleNameModal, SEASON_NAME_MODAL_ID } from "../components/admin/adminShuffle.js";
 import {
@@ -104,7 +103,6 @@ const EXTENSION_BUTTON_PREFIXES = ["extend_approve:", "extend_deny:"];
 const DODGE_BUTTON_PREFIXES = ["dodge_approve:", "dodge_deny:"];
 const REGISTER_APPROVE_DENY_PREFIXES = ["reg_approve:", "reg_deny:"];
 
-const ADMIN_BUTTON_ID_VALUES: string[] = Object.values(ADMIN_BUTTON_IDS);
 const ADMIN_SHUFFLE_RESOLVE_IDS = ["admin_shuffle_confirm", "admin_shuffle_cancel"];
 const ADMIN_REMOVE_RESOLVE_PREFIXES = ["admin_remove_confirm:", "admin_remove_cancel"];
 const ADMIN_CANCEL_RESOLVE_PREFIXES = ["admin_cancel_confirm:", "admin_cancel_cancel"];
@@ -233,10 +231,6 @@ export function registerInteractionEvent(client: Client): void {
           await handleMatchChannelButton(interaction);
         } else if (EXTENSION_BUTTON_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
           await handleExtensionButton(interaction);
-        }
-
-        if (ADMIN_BUTTON_ID_VALUES.includes(interaction.customId)) {
-          await maybeTrollAdminAction(interaction).catch((err) => console.error("Troll check failed:", err));
         }
         return;
       }

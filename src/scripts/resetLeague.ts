@@ -5,7 +5,7 @@
  * Wipes every row the bot owns and rewrites each tab's header row to the current layout:
  *   Ladder, Matches, Dodges, All Time Stats, SeasonStats, SignupRequests, BannedUsers,
  *   VacationRequests, ExtendedVacation, plus the current season's tab (named in Settings).
- * Clears the season name in Settings (pause/troll toggles are kept) and wipes the local season
+ * Clears the season name in Settings (the pause toggle is kept) and wipes the local season
  * points store (data/points.json).
  *
  * Any other tabs (e.g. old `Season N` archives) are left alone and listed at the end so they can
@@ -83,7 +83,7 @@ async function main(): Promise<void> {
     await resetTab(tab.name, tab.headers);
   }
 
-  // Keep the Paused/TrollEnabled toggles; only drop the season name so stats go back to the
+  // Keep the Paused toggle; only drop the season name so stats go back to the
   // SeasonStats tab until the next Reset Ladder (End Season) names a new one.
   if (currentSeasonName) {
     await setCurrentSeasonName("");

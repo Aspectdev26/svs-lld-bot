@@ -2,7 +2,6 @@ import { config } from "./config.js";
 import { createClient } from "./discord/client.js";
 import { registerReadyEvent } from "./discord/events/ready.js";
 import { registerInteractionEvent } from "./discord/events/interactionCreate.js";
-import { registerMessageEvent } from "./discord/events/messageCreate.js";
 import { startMatchWatcher } from "./scheduler/matchWatcher.js";
 import { startVacationWatcher } from "./scheduler/vacationWatcher.js";
 import { ensureRegisterPanel } from "./discord/registerPanel.js";
@@ -64,7 +63,6 @@ async function main() {
   const client = createClient();
   registerReadyEvent(client);
   registerInteractionEvent(client);
-  registerMessageEvent(client);
 
   client.once("clientReady", () => {
     ready = true;

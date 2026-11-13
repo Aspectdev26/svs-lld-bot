@@ -1,5 +1,5 @@
 import { createCanvas, type SKRSContext2D } from "@napi-rs/canvas";
-import type { Element, LadderRow } from "../types.js";
+import type { LadderRow } from "../types.js";
 
 const WIDTH = 640;
 const HEADER_HEIGHT = 80;
@@ -8,12 +8,6 @@ const PADDING = 20;
 
 const RANK_COLORS: Record<number, string> = { 1: "#f1c40f", 2: "#bdc3c7", 3: "#cd7f32" };
 const DEFAULT_RANK_COLOR = "#4a4a52";
-
-const ELEMENT_COLORS: Record<Element, string> = {
-  Cold: "#5dade2",
-  Light: "#f7dc6f",
-  Fire: "#ec7063",
-};
 
 function roundedRect(ctx: SKRSContext2D, x: number, y: number, w: number, h: number, r: number): void {
   ctx.beginPath();
@@ -73,21 +67,18 @@ export async function renderTop10Image(rows: LadderRow[]): Promise<Buffer> {
     ctx.fillText(String(row.rank), PADDING + badgeSize / 2, badgeY + badgeSize / 2 + 6);
     ctx.textAlign = "left";
 
-    // Character name
+    // Player name (+ Vacation tag), vertically centered in the row
     const textX = PADDING + badgeSize + 16;
+    const textY = y + ROW_HEIGHT / 2 + 7;
+    const name = row.discordName || "(unknown)";
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 19px sans-serif";
-    ctx.fillText(row.characterName || "(unnamed)", textX, y + 22);
-
-    // Element • Build (+ Vacation tag)
-    ctx.font = "15px sans-serif";
-    ctx.fillStyle = ELEMENT_COLORS[row.element] ?? "#b5b6bc";
-    const elementLabel = `${row.element} • ${row.build}`;
-    ctx.fillText(elementLabel, textX, y + 42);
+    ctx.fillText(name, textX, textY);
     if (row.status === "Vacation") {
-      const elementWidth = ctx.measureText(elementLabel).width;
+      const nameWidth = ctx.measureText(name).width;
       ctx.fillStyle = "#888990";
-      ctx.fillText("  (Vacation)", textX + elementWidth, y + 42);
+      ctx.font = "15px sans-serif";
+      ctx.fillText("  (Vacation)", textX + nameWidth, textY);
     }
   });
 

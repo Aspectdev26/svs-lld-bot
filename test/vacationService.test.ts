@@ -16,7 +16,7 @@ vi.mock("../src/domain/adminService.js", () => ({
 }));
 vi.mock("../src/domain/matchService.js", () => ({
   genId: vi.fn(),
-  entryHasPendingMatch: vi.fn(),
+  playerHasPendingMatch: vi.fn(),
   createMatch: vi.fn(),
 }));
 
@@ -29,9 +29,6 @@ function entry(overrides: Partial<LadderRow> = {}): LadderRow {
   return {
     sheetRow: 2,
     rank: 1,
-    element: "Cold",
-    build: "Vita",
-    characterName: "Frosty",
     discordName: "user#1",
     discordUserId: "u1",
     status: "Available",
@@ -49,9 +46,6 @@ const evacRow: ExtendedVacationRow = {
   sheetRow: 2,
   discordUserId: "elsa",
   discordName: "elsa#1",
-  characterName: "Elsa",
-  element: "Cold",
-  build: "Vita",
   rankAtEntry: 3,
   enteredAt: "2026-08-01T00:00:00.000Z",
   expiresAt: "2026-08-31T00:00:00.000Z",
@@ -65,20 +59,20 @@ beforeEach(() => {
   vi.mocked(ladderRepo.addLadderEntry).mockReset();
   vi.mocked(ladderRepo.findEntry).mockReset();
   vi.mocked(setManualRank).mockReset();
-  vi.mocked(matchService.entryHasPendingMatch).mockReset().mockResolvedValue(false);
+  vi.mocked(matchService.playerHasPendingMatch).mockReset().mockResolvedValue(false);
   vi.mocked(matchService.createMatch).mockReset().mockResolvedValue({ matchId: "m1" } as MatchRow);
 });
 
 describe("returnFromExtendedVacation", () => {
   it("re-finds the returner after setManualRank re-sorts the sheet, and challenges the old rank holder", async () => {
-    const a = entry({ discordUserId: "a", characterName: "A", rank: 1, sheetRow: 2 });
-    const b = entry({ discordUserId: "b", characterName: "B", rank: 2, sheetRow: 3 });
-    const c = entry({ discordUserId: "c", characterName: "C", rank: 3, sheetRow: 4 });
-    const d = entry({ discordUserId: "d", characterName: "D", rank: 4, sheetRow: 5 });
+    const a = entry({ discordUserId: "a", discordName: "A", rank: 1, sheetRow: 2 });
+    const b = entry({ discordUserId: "b", discordName: "B", rank: 2, sheetRow: 3 });
+    const c = entry({ discordUserId: "c", discordName: "C", rank: 3, sheetRow: 4 });
+    const d = entry({ discordUserId: "d", discordName: "D", rank: 4, sheetRow: 5 });
 
     // Appended at the bottom (sheet row 6), then setManualRank inserts at rank 4 and re-sorts,
     // so Elsa lands on sheet row 5 and D (now rank 5) sorts into sheet row 6.
-    const elsaAppended = entry({ discordUserId: "elsa", characterName: "Elsa", rank: 5, sheetRow: 6 });
+    const elsaAppended = entry({ discordUserId: "elsa", discordName: "Elsa", rank: 5, sheetRow: 6 });
     vi.mocked(ladderRepo.findEntry).mockResolvedValue(elsaAppended);
     vi.mocked(ladderRepo.getLadder)
       .mockResolvedValueOnce([a, b, c, d])
@@ -86,8 +80,8 @@ describe("returnFromExtendedVacation", () => {
         a,
         b,
         c,
-        entry({ discordUserId: "elsa", characterName: "Elsa", rank: 4, sheetRow: 5 }),
-        entry({ discordUserId: "d", characterName: "D", rank: 5, sheetRow: 6 }),
+        entry({ discordUserId: "elsa", discordName: "Elsa", rank: 4, sheetRow: 5 }),
+        entry({ discordUserId: "d", discordName: "D", rank: 5, sheetRow: 6 }),
       ]);
 
     const result = await returnFromExtendedVacation(evacRow);

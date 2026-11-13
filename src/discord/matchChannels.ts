@@ -12,7 +12,6 @@ import {
 } from "discord.js";
 import { config } from "../config.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
-import { formatElement } from "../util/formatElement.js";
 import type { LadderRow, MatchRow } from "../types.js";
 
 function slug(name: string): string {
@@ -84,7 +83,7 @@ export async function createMatchChannel(
   // ManageThreads on the parent (League Managers, via ensureLeagueManagerThreadAccess) can see or
   // join it — participants can't add outside spectators themselves.
   const thread = await parent.threads.create({
-    name: `challenge-${slug(challenger.characterName)}-vs-${slug(defender.characterName)}`,
+    name: `challenge-${slug(challenger.discordName)}-vs-${slug(defender.discordName)}`,
     type: ChannelType.PrivateThread,
     invitable: false,
     // 7 days: comfortably outlasts the 24h dodge window plus a 2-day extension, so an active
@@ -101,7 +100,7 @@ export async function createMatchChannel(
   const embed = new EmbedBuilder()
     .setTitle("Match thread")
     .setDescription(
-      `⚔️ <@${challenger.discordUserId}> (**${formatElement(challenger.element)}**) vs <@${defender.discordUserId}> (**${formatElement(defender.element)}**)\n\n` +
+      `⚔️ <@${challenger.discordUserId}> vs <@${defender.discordUserId}>\n\n` +
         `Use this thread to arrange and play your match. Match expires <t:${expiresUnix}:F> (<t:${expiresUnix}:R>).\n\n` +
         `**Report Win** — either player can self-report the result once the match is played.\n` +
         `**Request Dodge** — if your opponent hasn't responded in 24+ hours, request a dodge (you'll need a screenshot).\n` +
@@ -158,7 +157,7 @@ export async function expireMatchChannel(client: Client, match: MatchRow): Promi
 
     const expiresUnix = Math.floor(Date.parse(match.expiresAt) / 1000);
     const description =
-      `⚔️ <@${match.challengerUserId}> (**${formatElement(match.challengerElement)}**) vs <@${match.defenderUserId}> (**${formatElement(match.defenderElement)}**)\n\n` +
+      `⚔️ <@${match.challengerUserId}> vs <@${match.defenderUserId}>\n\n` +
       `⌛ This match expired <t:${expiresUnix}:F> with no result reported. No rank change — both players are free to challenge/be challenged again.\n\n` +
       `This thread is archived for reference; a League Manager can delete it once it's no longer needed.`;
     const embed = new EmbedBuilder().setTitle("Match thread (expired)").setDescription(description).setColor(0x7f8c8d);

@@ -6,7 +6,6 @@ import { isLadderPaused } from "../domain/ladderPauseService.js";
 import { notify } from "../discord/notify.js";
 import { expireMatchChannel } from "../discord/matchChannels.js";
 import { refreshActiveChallengesPanel } from "../discord/activeChallengesPanel.js";
-import { formatElement } from "../util/formatElement.js";
 
 let running = false;
 
@@ -29,8 +28,8 @@ async function checkMatches(client: Client): Promise<void> {
         const embed = new EmbedBuilder()
           .setTitle("Match expired")
           .setDescription(
-            `⌛ The match (\`${match.matchId}\`) between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and ` +
-              `<@${match.defenderUserId}> (${formatElement(match.defenderElement)}) expired with no result reported. No rank change — both players are free to challenge/be challenged again.`,
+            `⌛ The match (\`${match.matchId}\`) between <@${match.challengerUserId}> and ` +
+              `<@${match.defenderUserId}> expired with no result reported. No rank change — both players are free to challenge/be challenged again.`,
           )
           .setColor(0x7f8c8d);
         await notify.challenges(client, { embeds: [embed] });
@@ -44,11 +43,11 @@ async function checkMatches(client: Client): Promise<void> {
         const embed = new EmbedBuilder()
           .setTitle("Match expiring soon")
           .setDescription(
-            `⚠️ Match \`${match.matchId}\` between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and ` +
+            `⚠️ Match \`${match.matchId}\` between <@${match.challengerUserId}> and ` +
               // Static (:F), not relative (:R) — this post is permanent and never edited or removed once
               // the match resolves, so a live-ticking "expires in 2 hours" would just turn into a
               // forever-climbing "expired 3 weeks ago" for a match that's long since done.
-              `<@${match.defenderUserId}> (${formatElement(match.defenderElement)}) expires <t:${Math.floor(expiresAtMs / 1000)}:F>. ` +
+              `<@${match.defenderUserId}> expires <t:${Math.floor(expiresAtMs / 1000)}:F>. ` +
               `Play your match and use /report-win, or request a dodge if your opponent hasn't responded.`,
           )
           .setColor(0xf39c12);

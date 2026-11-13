@@ -1,9 +1,3 @@
-export const ELEMENTS = ["Cold", "Light", "Fire"] as const;
-export type Element = (typeof ELEMENTS)[number];
-
-export const BUILDS = ["Vita", "ES"] as const;
-export type Build = (typeof BUILDS)[number];
-
 export const PLAYER_STATUSES = ["Available", "Vacation"] as const;
 export type PlayerStatus = (typeof PLAYER_STATUSES)[number];
 
@@ -15,10 +9,7 @@ export interface LadderRow {
   /** 1-indexed position in the Ladder sheet (row number, not rank) — used for targeted updates. */
   sheetRow: number;
   rank: number;
-  element: Element;
-  build: Build;
-  /** In-game character name for this element/build entry — the primary display identity on the ladder. */
-  characterName: string;
+  /** The player's Discord display name, captured at signup — the display identity on the ladder. */
   discordName: string;
   discordUserId: string;
   status: LadderDisplayStatus;
@@ -58,10 +49,8 @@ export interface MatchRow {
   sheetRow: number;
   matchId: string;
   challengerUserId: string;
-  challengerElement: Element;
   challengerRank: number;
   defenderUserId: string;
-  defenderElement: Element;
   defenderRank: number;
   status: MatchStatus;
   createdAt: string;
@@ -100,7 +89,7 @@ export interface DodgeRow {
 }
 
 /**
- * One permanent row per player (per element) who has ever held rank 1. `defends` is their all-time
+ * One permanent row per player who has ever held rank 1. `defends` is their all-time
  * total of successful title defenses — it survives losing and later reclaiming rank 1, and rows are
  * never deleted or overwritten by another player, so the tab doubles as a hall-of-fame list.
  * `currentHolder` flags whichever single row is the reigning rank-1 holder right now.
@@ -109,9 +98,6 @@ export interface Rank1Row {
   sheetRow: number;
   discordUserId: string;
   discordName: string;
-  characterName: string;
-  element: Element;
-  build: Build;
   defends: number;
   holderSince: string;
   currentHolder: boolean;
@@ -129,7 +115,7 @@ export interface Rank1Row {
 }
 
 /**
- * One row per player (per element) with any recorded activity in the current season — defends,
+ * One row per player with any recorded activity in the current season — defends,
  * wins, and losses since the last "Reset Ladder (End Season)". Wiped (and snapshotted to a
  * `Season N` tab) every time the ladder is reset for a new season.
  */
@@ -137,9 +123,6 @@ export interface SeasonStatsRow {
   sheetRow: number;
   discordUserId: string;
   discordName: string;
-  characterName: string;
-  element: Element;
-  build: Build;
   defends: number;
   wins: number;
   losses: number;
@@ -154,9 +137,6 @@ export interface SignupRequestRow {
   requestId: string;
   discordUserId: string;
   discordName: string;
-  characterName: string;
-  element: Element;
-  build: Build;
   status: SignupStatus;
   requestedAt: string;
   resolvedByUserId: string;
@@ -165,12 +145,11 @@ export interface SignupRequestRow {
   leagueManagerMessageUrl: string;
 }
 
-/** A ban record — `element` is either one Element or the "ALL" sentinel (see bannedRepo.ALL_ELEMENTS). */
+/** A ban record — a banned player can't sign up and is removed from the ladder. */
 export interface BanRow {
   sheetRow: number;
   discordUserId: string;
   discordName: string;
-  element: string;
   reason: string;
   bannedAt: string;
   bannedByUserId: string;
@@ -185,9 +164,6 @@ export interface VacationRequestRow {
   requestId: string;
   discordUserId: string;
   discordName: string;
-  characterName: string;
-  element: Element;
-  build: Build;
   requestType: VacationRequestType;
   status: SignupStatus;
   requestedAt: string;
@@ -200,14 +176,11 @@ export interface VacationRequestRow {
 export const EXTENDED_VACATION_SOURCES = ["Requested", "AutoEscalated"] as const;
 export type ExtendedVacationSource = (typeof EXTENDED_VACATION_SOURCES)[number];
 
-/** One row per (user, element) currently on Extended Vacation — the entry is off the ladder entirely while this row exists. */
+/** One row per player currently on Extended Vacation — the entry is off the ladder entirely while this row exists. */
 export interface ExtendedVacationRow {
   sheetRow: number;
   discordUserId: string;
   discordName: string;
-  characterName: string;
-  element: Element;
-  build: Build;
   /** The rank this entry held at the moment it entered Extended Vacation — used to reinsert one rank behind it on return. */
   rankAtEntry: number;
   enteredAt: string;

@@ -1,7 +1,7 @@
 # SVS League Ladder Bot
 
-A Discord bot that runs a competitive ladder league (Cold ❄️ / Light ⚡ / Fire 🔥 elements, Vita / ES builds) with a
-Google Sheet as the live database. Handles signups, challenges, win reporting, vacations, and admin-reviewed dodge
+A Discord bot that runs a competitive Necro vs Druid ladder league (every match is a mirror match — no elements,
+builds, or character names) with a Google Sheet as the live database. Handles signups, challenges, win reporting, vacations, and admin-reviewed dodge
 requests with screenshot evidence.
 
 ## Contents
@@ -30,28 +30,26 @@ requests with screenshot evidence.
 
 ## Registration & the ladder
 
-- **Sign up**: the `#register` **Sign Up** button walks you through element → build → character name, then posts
-  to `#league-managers` for approval. Approve adds you to the bottom of the ladder, DMs you, and announces in
-  `#announcements`. There's no self-service `/signup` — every entry is admin-reviewed.
-- **Character names** must be unique per element+build (case-insensitive) — except reclaiming your own former
-  name/element/build combo after being removed.
-- **Leave Ladder**: self-service button in `#register`. If the entry has a pending match, leaving reports it as a
+- **Sign up**: one click on the `#register` **Sign Up** button — no form. The request is just your Discord display
+  name, posted to `#league-managers` for approval. Approve adds you to the bottom of the ladder, DMs you, and
+  announces in `#announcements`. There's no self-service `/signup` — every entry is admin-reviewed.
+- **One ladder spot per player**, shown by Discord name. A player can't sign up while already on the ladder, while a
+  request is pending, or while on Extended Vacation (they use **Return** instead).
+- **Leave Ladder**: self-service button in `#register`. If you have a pending match, leaving reports it as a
   loss for you first. Not reversible — you'd need to sign up again.
-- **The `Ladder` tab** matches the league's original reference sheet (same columns: `Rank`, `Name`, `spec`,
-  `element`, `discUser`, `Status`, `cDate`, `Opp#`, `discord userid`, `Notes`, `Dodges`, plus a `DodgesAgainst`
-  column the bot added). `Status` is `Available`, `Vacation`, or `Challenge` (with `cDate`/`Opp#` filled in while a
+- **The `Ladder` tab** columns: `Rank`, `discUser`, `Status`, `cDate`, `Opp#`, `discord userid`, `Notes`, `Dodges`,
+  `DodgesAgainst`, plus two bot-only vacation timestamp columns. `Status` is `Available`, `Vacation`, or `Challenge` (with `cDate`/`Opp#` filled in while a
   match is active). Colors/badges are native Sheets conditional formatting — the bot only ever writes text/numbers.
   Rows re-sort by `Rank` after any rank change; `Notes` is left alone for League Managers.
-- **Up to 3 rows per player** (one per element), each with its own rank and character name.
 - Every approval request in `#league-managers` deletes itself once actioned; personal ephemeral bot replies that
   reach a final step self-delete after 5s (except the **Guide** reply, which is reference material).
 
 ## Challenges & matches
 
 - **Issuing**: `/challenge` or the `#challenges` **Challenge** button. Reach up to 3 ranks up (`CHALLENGE_RANGE`),
-  or 2 if the target is in the top 10 (`TOP_TIER_SIZE` / `TOP_TIER_CHALLENGE_RANGE`). Your own other-element rows
-  and any vacationing entry are skipped, not counted. One match per element per player (up to 3 concurrent).
-- **Post-loss cooldown**: 12h (`CHALLENGE_COOLDOWN_MS`) before re-challenging the exact entry you just lost to;
+  or 2 if the target is in the top 10 (`TOP_TIER_SIZE` / `TOP_TIER_CHALLENGE_RANGE`). Vacationing players are
+  skipped, not counted. One active match per player at a time.
+- **Post-loss cooldown**: 12h (`CHALLENGE_COOLDOWN_MS`) before re-challenging the exact player you just lost to;
   other targets are unaffected.
 - **Match threads**: a private thread under `#challenges`, visible to both participants; League Managers get access
   via a one-time `ManageThreads` role grant rather than a per-thread invite. Has **Report Win**, **Request Dodge**,
@@ -74,17 +72,17 @@ requests with screenshot evidence.
 
 ## Vacation
 
-- **Vacation** (self-service): `#register` buttons, needs League Manager approval. If the entry has a pending
+- **Vacation** (self-service): `#register` buttons, needs League Manager approval. If you have a pending
   match, approval auto-forfeits it as a loss (counts as a dodge against you, same thresholds as above). Lasts up
   to `VACATION_EXPIRY_MS` (default 14 days); **Return from Vacation** is self-service any time before then. Miss
   the window and it auto-escalates to Extended Vacation, with a DM warning `VACATION_WARNING_LEAD_MS` (default 3
   days) out either way.
-- **Extended Vacation**: same approval/forfeit rule, but removes the entry from the ladder entirely (into an
+- **Extended Vacation**: same approval/forfeit rule, but removes you from the ladder entirely (into an
   `ExtendedVacation` tab, recording its rank) for up to `EXTENDED_VACATION_EXPIRY_MS` (default 30 days).
   **Return** is self-service and reinserts you at your old rank + 1, auto-issuing a challenge against whoever now
-  holds that rank (skipped if they're mid-match). Miss the window and the entry is fully removed, with season
+  holds that rank (skipped if they're mid-match). Miss the window and you're fully removed, with season
   (activity) points reset to zero.
-- The League Manager dashboard's **Vacation** button is a separate manual admin override (toggles one character);
+- The League Manager dashboard's **Vacation** button is a separate manual admin override (toggles one player);
   unlike the self-service flow, it *blocks* instead of auto-forfeiting if there's a pending match.
 
 ## Stats & leaderboard
@@ -103,13 +101,13 @@ so new buttons don't require re-pinning by hand):
 | Button | Does |
 | --- | --- |
 | **Reset Ladder (End Season)** 🔴 | Cancels active matches, randomizes ranks, starts a new season tab (old tab is frozen as its permanent record). Zeroes `DodgesAgainst`. Confirmation required. |
-| **Remove Player** | Removes one character (by name), closes any gap. |
-| **Ban Player** 🔴 | Removes matching entries (one element or all) and blocks future signups for that scope. |
+| **Remove Player** | Removes one player, closes any gap. |
+| **Ban Player** 🔴 | Removes the player from the ladder and blocks future signups. |
 | **Unban** | Lifts an active ban. |
 | **Force-Cancel Match** | Voids any active match, no rank change. |
-| **Set Rank** | Moves one entry to an exact rank; everyone between shifts by one. |
+| **Set Rank** | Moves one player to an exact rank; everyone between shifts by one. |
 | **Pending Sign-ups** | Lists/approves signup requests, including any that failed to auto-post. |
-| **Vacation** | Manual toggle for one character (see [Vacation](#vacation)). |
+| **Vacation** | Manual toggle for one player (see [Vacation](#vacation)). |
 | **Shuffle Ranks** | Randomizes rank order only — warns first if matches are active. Confirmation required. |
 | **Pause/Resume Ladder** | Freezes/resumes every active match's countdown; blocks new challenges while paused. |
 | **Guide** | League Manager reference doc, as a non-auto-dismissing reply. |
@@ -139,8 +137,16 @@ Every action here is announced in the results channel.
 3. Create (or reuse) a Sheet, share it with the service account email as **Editor**, and copy its ID from the URL
    → `GOOGLE_SHEET_ID`.
 4. The bot creates all required tabs (`Ladder`, `Matches`, `Dodges`, `All Time Stats`, `SeasonStats`,
-   `SignupRequests`, `BannedUsers`, `Settings`) automatically on first run, and backfills new columns onto existing
-   tabs as the schema grows.
+   `SignupRequests`, `BannedUsers`, `Settings`, `VacationRequests`, `ExtendedVacation`) automatically on first run,
+   and rewrites any header row that doesn't match the current layout (data rows are never touched).
+
+### Resetting the league
+
+`npm run reset-league -- --yes` wipes every bot-owned tab back to just its header row (ladder, matches, stats,
+signups, bans, vacations), clears the season name in `Settings`, and empties `data/points.json`. Other tabs such as
+old `Season N` archives are left alone and listed so you can delete them by hand. Stop the bot before running it.
+This was used for the switch from the old elements league (the last version of that is git tag
+`elements-league-final`).
 
 ### 3. Configure and run
 
@@ -173,8 +179,8 @@ definitions changed), then restart via the dashboard agent's API rather than any
 Use a separate test server/channels and a scratch copy of the Sheet before pointing this at the real league. To
 speed up expiry/warning testing, temporarily lower the relevant `_MS` variables in `.env`.
 
-- **Signup**: approve and deny both work end-to-end (DM/announcement, or DM'd reason); duplicate
-  name+element+build is rejected, a different build/element is accepted.
+- **Signup**: one click submits; approve and deny both work end-to-end (DM/announcement, or DM'd reason); a second
+  signup while already on the ladder or with a request pending is rejected.
 - **Challenge**: valid target, out-of-range, top-10-too-far, self-challenge, and vacationing-target all reject
   correctly; an unregistered account gets a clear error instead of a silent no-op. A valid challenge creates the
   private thread, results-channel post, and Active Challenges entry; the post-loss cooldown blocks a rematch but
@@ -182,7 +188,7 @@ speed up expiry/warning testing, temporarily lower the relevant `_MS` variables 
 - **Report Win**: both entry points show the no-default winner dropdown; picking the opponent (concede) only
   swaps ranks when the challenger wins; thread is deleted, result posted, entry drops off Active Challenges either
   way.
-- **Dashboard Vacation toggle**: flips status without touching other elements; blocked while a match is pending.
+- **Dashboard Vacation toggle**: flips status; blocked while a match is pending.
 - **Dodges**: request → approval swaps ranks, posts the result, deletes the original request; denial DMs (or
   pings) the requester with the reason either way.
 - **Expiry**: a match past full expiry is marked `Expired` with no rank change, thread left in place and
@@ -192,7 +198,7 @@ speed up expiry/warning testing, temporarily lower the relevant `_MS` variables 
 - **Self-service Dodge Request**: posting a screenshot then **Submit Dodge Request** reaches `#league-managers`
   the same as `/dodge-request`.
 - **League Manager dashboard**: exercise each button — Set Rank (mid-ladder shift), Force-Cancel Match, Remove
-  Player (partial removal + match cancellation), Ban/Unban (per-element and all-elements), and Reset Ladder last
+  Player (removal + match cancellation), Ban/Unban, and Reset Ladder last
   (confirms the season-name modal, match cancellation, rank randomization, and that the old tab is preserved).
 - **Top 10 panel**: posts/pins on first startup; updates in place (no duplicate/re-pin) on any top-10 rank change.
 - **Ladder tab visuals**: header/colors/badges match on sight; a `Challenge` status shows the right `cDate`/`Opp#`
@@ -203,7 +209,7 @@ speed up expiry/warning testing, temporarily lower the relevant `_MS` variables 
   Requesting with a pending match auto-forfeits it and increments `DodgesAgainst` — run it a couple more times to
   confirm the normal warning/removal DMs still fire off a vacation-caused forfeit. Confirm the 3-day warning and
   auto-escalation to Extended Vacation.
-- **Self-service Extended Vacation**: approve removes the entry from `Ladder` into `ExtendedVacation`; Return
+- **Self-service Extended Vacation**: approve moves the player from `Ladder` into `ExtendedVacation`; Return
   reinserts at old rank + 1 and auto-challenges whoever holds it now (skipped if they're mid-match). Confirm the
   3-day warning and that full expiry clears the row and resets activity points.
 

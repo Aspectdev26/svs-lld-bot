@@ -15,7 +15,6 @@ import { buildWinnerPrompt } from "../reportWinFlow.js";
 import { notify } from "../notify.js";
 import { closeMatchChannel } from "../matchChannels.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
-import { formatElement } from "../../util/formatElement.js";
 import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 
 const EXTENSION_ALREADY_USED =
@@ -159,7 +158,7 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
     .setTitle("Match extension request")
     .setDescription(
       `⏳ <@${interaction.user.id}> requested a 2-day extension for match \`${match.matchId}\`\n` +
-        `(<@${match.challengerUserId}> vs <@${match.defenderUserId}>, ${formatElement(match.challengerElement)} vs ${formatElement(match.defenderElement)}).\n` +
+        `(<@${match.challengerUserId}> vs <@${match.defenderUserId}>).\n` +
         `Current expiry: <t:${Math.floor(Date.parse(match.expiresAt) / 1000)}:F>\n` +
         `This is the match’s only extension request — denying it means no further requests.`,
     )
@@ -223,7 +222,7 @@ async function handleCancelMatch(interaction: ButtonInteraction, matchId: string
   const embed = new EmbedBuilder()
     .setTitle("Match cancelled")
     .setDescription(
-      `🚫 Match \`${match.matchId}\` between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and <@${match.defenderUserId}> (${formatElement(match.defenderElement)}) was cancelled by mutual agreement. No rank change.`,
+      `🚫 Match \`${match.matchId}\` between <@${match.challengerUserId}> and <@${match.defenderUserId}> was cancelled by mutual agreement. No rank change.`,
     )
     .setColor(0x95a5a6);
   await notify.challenges(interaction.client, { embeds: [embed] });

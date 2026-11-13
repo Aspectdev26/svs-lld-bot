@@ -19,7 +19,6 @@ import { notify, postAutoDeletingConfirmation, deleteMessageByUrl } from "../not
 import { closeMatchChannel } from "../matchChannels.js";
 import { refreshTop10Panel } from "../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../activeChallengesPanel.js";
-import { formatElement } from "../../util/formatElement.js";
 import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 
 export const DENY_MODAL_PREFIX = "dodge_deny_modal";
@@ -106,7 +105,7 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
     `✅ Dodge approved by <@${interaction.user.id}>. <@${match.challengerUserId}> has taken the rank.`,
   );
 
-  let description = `🏳️ <@${match.defenderUserId}> did not respond in time — <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) has been awarded the win and taken their rank (match \`${match.matchId}\`).`;
+  let description = `🏳️ <@${match.defenderUserId}> did not respond in time — <@${match.challengerUserId}> has been awarded the win and taken their rank (match \`${match.matchId}\`).`;
   if (rank1Update.changed && rank1Update.kind === "newChampion") {
     description += `\n👑 **${rank1Update.holderName}** is the new Rank 1!`;
   }
@@ -118,7 +117,7 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
   });
 
   await closeMatchChannel(interaction.client, match, "Dodge approved");
-  await handleDodgeCountThreshold(interaction.client, match.defenderUserId, match.defenderElement, defenderDodgeCount);
+  await handleDodgeCountThreshold(interaction.client, match.defenderUserId, defenderDodgeCount);
 
   await refreshTop10Panel(interaction.client).catch((err) => console.error("Failed to refresh top 10 panel:", err));
   await refreshActiveChallengesPanel(interaction.client).catch((err) =>

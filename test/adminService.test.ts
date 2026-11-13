@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { LadderRow, MatchRow } from "../src/types.js";
 
 vi.mock("../src/sheets/ladderRepo.js", () => ({
-  getPlayerRows: vi.fn(),
   getLadder: vi.fn(),
   clearRow: vi.fn(),
   setRank: vi.fn(),
@@ -14,7 +13,7 @@ vi.mock("../src/sheets/ladderRepo.js", () => ({
 }));
 vi.mock("../src/sheets/matchesRepo.js", () => ({
   getPendingMatches: vi.fn(),
-  getPendingMatchForEntry: vi.fn(),
+  getPendingMatchForPlayer: vi.fn(),
   getMatchById: vi.fn(),
   updateMatch: vi.fn(),
 }));
@@ -50,16 +49,12 @@ import * as bannedRepo from "../src/sheets/bannedRepo.js";
 import * as seasonStatsRepo from "../src/sheets/seasonStatsRepo.js";
 import * as rankingService from "../src/domain/rankingService.js";
 import * as pointsStore from "../src/domain/pointsStore.js";
-import { ALL_ELEMENTS } from "../src/sheets/bannedRepo.js";
 import { removePlayer, banPlayer, forceCancelMatch, resetLadderEndSeason, shuffleLadderRanks } from "../src/domain/adminService.js";
 
 function entry(overrides: Partial<LadderRow> = {}): LadderRow {
   return {
     sheetRow: 2,
     rank: 1,
-    element: "Cold",
-    build: "Vita",
-    characterName: "Frosty",
     discordName: "user#1",
     discordUserId: "u1",
     status: "Available",
@@ -78,10 +73,8 @@ function matchRow(overrides: Partial<MatchRow> = {}): MatchRow {
     sheetRow: 2,
     matchId: "m1",
     challengerUserId: "u1",
-    challengerElement: "Cold",
     challengerRank: 3,
     defenderUserId: "u2",
-    defenderElement: "Cold",
     defenderRank: 1,
     status: "Pending",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -97,7 +90,6 @@ function matchRow(overrides: Partial<MatchRow> = {}): MatchRow {
 }
 
 beforeEach(() => {
-  vi.mocked(ladderRepo.getPlayerRows).mockReset();
   vi.mocked(ladderRepo.getLadder).mockReset().mockResolvedValue([]);
   vi.mocked(ladderRepo.clearRow).mockReset();
   vi.mocked(ladderRepo.setRank).mockReset();
@@ -107,7 +99,7 @@ beforeEach(() => {
   vi.mocked(ladderRepo.clearChallengeInfo).mockReset();
   vi.mocked(ladderRepo.sortLadderByRank).mockReset();
   vi.mocked(matchesRepo.getPendingMatches).mockReset();
-  vi.mocked(matchesRepo.getPendingMatchForEntry).mockReset().mockResolvedValue(undefined);
+  vi.mocked(matchesRepo.getPendingMatchForPlayer).mockReset().mockResolvedValue(undefined);
   vi.mocked(matchesRepo.getMatchById).mockReset();
   vi.mocked(matchesRepo.updateMatch).mockReset();
   vi.mocked(bannedRepo.addBan).mockReset();
@@ -119,66 +111,65 @@ beforeEach(() => {
 });
 
 describe("removePlayer", () => {
-  it("removes only the matching element when scope is a specific element", async () => {
-    const coldEntry = entry({ sheetRow: 2, element: "Cold", rank: 1 });
-    const fireEntry = entry({ sheetRow: 3, element: "Fire", rank: 2 });
-    vi.mocked(ladderRepo.getPlayerRows).mockResolvedValue([coldEntry, fireEntry]);
-    vi.mocked(ladderRepo.getLadder).mockResolvedValue([coldEntry, fireEntry]);
+  it("removes the player's entry and compacts the ranks below it", async () => {
+    const leaving = entry({ sheetRow: 2, rank: 1, discordUserId: "u1" });
+    const other = entry({ sheetRow: 3, rank: 2, discordUserId: "u2" });
+    vi.mocked(ladderRepo.findEntry).mockResolvedValue(leaving);
+    vi.mocked(ladderRepo.getLadder).mockResolvedValue([leaving, other]);
 
-    const result = await removePlayer("u1", "Cold");
+    const result = await removePlayer("u1");
 
-    expect(result.removedEntries).toEqual([coldEntry]);
+    expect(result.removedEntry).toEqual(leaving);
     expect(ladderRepo.clearRow).toHaveBeenCalledWith(2);
-    expect(ladderRepo.clearRow).not.toHaveBeenCalledWith(3);
+    expect(ladderRepo.clearRow).toHaveBeenCalledTimes(1);
+    expect(ladderRepo.setRanks).toHaveBeenCalledWith([{ sheetRow: 3, newRank: 1 }]);
   });
 
-  it("removes every entry when scope is ALL", async () => {
-    const coldEntry = entry({ sheetRow: 2, element: "Cold" });
-    const fireEntry = entry({ sheetRow: 3, element: "Fire" });
-    vi.mocked(ladderRepo.getPlayerRows).mockResolvedValue([coldEntry, fireEntry]);
-    vi.mocked(ladderRepo.getLadder).mockResolvedValue([coldEntry, fireEntry]);
-
-    const result = await removePlayer("u1", ALL_ELEMENTS);
-
-    expect(result.removedEntries).toHaveLength(2);
-    expect(ladderRepo.clearRow).toHaveBeenCalledTimes(2);
-  });
-
-  it("cancels a pending match tied to a removed entry", async () => {
-    const coldEntry = entry({ sheetRow: 2, element: "Cold" });
-    vi.mocked(ladderRepo.getPlayerRows).mockResolvedValue([coldEntry]);
-    vi.mocked(ladderRepo.getLadder).mockResolvedValue([coldEntry]);
+  it("cancels the player's pending match", async () => {
+    const leaving = entry({ sheetRow: 2 });
+    vi.mocked(ladderRepo.findEntry).mockResolvedValue(leaving);
+    vi.mocked(ladderRepo.getLadder).mockResolvedValue([leaving]);
     const pendingMatch = matchRow();
-    vi.mocked(matchesRepo.getPendingMatchForEntry).mockResolvedValue(pendingMatch);
+    vi.mocked(matchesRepo.getPendingMatchForPlayer).mockResolvedValue(pendingMatch);
 
-    const result = await removePlayer("u1", "Cold");
+    const result = await removePlayer("u1");
 
     expect(result.cancelledMatches).toEqual([pendingMatch]);
     expect(matchesRepo.updateMatch).toHaveBeenCalledWith(expect.objectContaining({ status: "Cancelled" }));
   });
 
-  it("does nothing when the player has no matching entries", async () => {
-    vi.mocked(ladderRepo.getPlayerRows).mockResolvedValue([entry({ element: "Fire" })]);
+  it("does nothing when the player isn't on the ladder", async () => {
+    vi.mocked(ladderRepo.findEntry).mockResolvedValue(undefined);
 
-    const result = await removePlayer("u1", "Cold");
+    const result = await removePlayer("u1");
 
-    expect(result.removedEntries).toEqual([]);
+    expect(result.removedEntry).toBeUndefined();
+    expect(result.cancelledMatches).toEqual([]);
     expect(ladderRepo.clearRow).not.toHaveBeenCalled();
   });
 });
 
 describe("banPlayer", () => {
-  it("records a ban row and then removes the matching entries", async () => {
-    const coldEntry = entry({ sheetRow: 2, element: "Cold" });
-    vi.mocked(ladderRepo.getPlayerRows).mockResolvedValue([coldEntry]);
-    vi.mocked(ladderRepo.getLadder).mockResolvedValue([coldEntry]);
+  it("records a ban row and then removes the player from the ladder", async () => {
+    const banned = entry({ sheetRow: 2 });
+    vi.mocked(ladderRepo.findEntry).mockResolvedValue(banned);
+    vi.mocked(ladderRepo.getLadder).mockResolvedValue([banned]);
 
-    const result = await banPlayer("u1", "user#1", "Cold", "toxic behavior", "admin1");
+    const result = await banPlayer("u1", "user#1", "toxic behavior", "admin1");
 
     expect(bannedRepo.addBan).toHaveBeenCalledWith(
-      expect.objectContaining({ discordUserId: "u1", element: "Cold", reason: "toxic behavior", bannedByUserId: "admin1" }),
+      expect.objectContaining({ discordUserId: "u1", reason: "toxic behavior", bannedByUserId: "admin1" }),
     );
-    expect(result.removedEntries).toEqual([coldEntry]);
+    expect(result.removedEntry).toEqual(banned);
+  });
+
+  it("still records the ban when the player isn't on the ladder", async () => {
+    vi.mocked(ladderRepo.findEntry).mockResolvedValue(undefined);
+
+    const result = await banPlayer("u9", "user#9", "alt account", "admin1");
+
+    expect(bannedRepo.addBan).toHaveBeenCalledWith(expect.objectContaining({ discordUserId: "u9" }));
+    expect(result.removedEntry).toBeUndefined();
   });
 });
 

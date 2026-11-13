@@ -4,8 +4,7 @@ import * as dodgesRepo from "../sheets/dodgesRepo.js";
 import { removePlayer } from "./adminService.js";
 import { notify } from "../discord/notify.js";
 import { closeMatchChannel } from "../discord/matchChannels.js";
-import { formatElement } from "../util/formatElement.js";
-import type { DodgeRow, Element, MatchRow } from "../types.js";
+import type { DodgeRow, MatchRow } from "../types.js";
 import { genId } from "./matchService.js";
 
 /** dodgeCount at which the dodged-against player gets a private warning DM + League Manager notice. */
@@ -18,25 +17,22 @@ export const DODGE_REMOVAL_THRESHOLD = 3;
  * match, or a forfeited match caused by a Vacation/Extended Vacation approval — see
  * vacationService.ts): a private warning DM (+ League Manager notice) at DODGE_WARNING_THRESHOLD,
  * or an automatic ladder removal at DODGE_REMOVAL_THRESHOLD. A no-op below the warning threshold,
- * or if the dodged-against player's ladder entry couldn't be found. `dodgedUserId`/`dodgedElement`
- * identify whose count this is — usually the match's defender, but a vacation-forfeit can charge
+ * or if the dodged-against player's ladder entry couldn't be found. `dodgedUserId` identifies
+ * whose count this is — usually the match's defender, but a vacation-forfeit can charge
  * either side.
  */
 export async function handleDodgeCountThreshold(
   client: Client,
   dodgedUserId: string,
-  dodgedElement: Element,
   dodgedDodgeCount: number | null,
 ): Promise<void> {
   if (dodgedDodgeCount === null || dodgedDodgeCount < DODGE_WARNING_THRESHOLD) return;
 
-  const elementLabel = formatElement(dodgedElement);
-
   if (dodgedDodgeCount >= DODGE_REMOVAL_THRESHOLD) {
-    const { removedEntries, cancelledMatches } = await removePlayer(dodgedUserId, dodgedElement);
-    if (removedEntries.length === 0) return;
+    const { removedEntry, cancelledMatches } = await removePlayer(dodgedUserId);
+    if (!removedEntry) return;
     // Defensive: whatever match caused this increment is already resolved by this point, so this
-    // should normally find nothing, but any other pending match on this entry gets cleaned up.
+    // should normally find nothing, but any other pending match for this player gets cleaned up.
     for (const cancelled of cancelledMatches) {
       await closeMatchChannel(client, cancelled, "Player removed by automatic dodge-count removal");
     }
@@ -44,7 +40,7 @@ export async function handleDodgeCountThreshold(
     const dmEmbed = new EmbedBuilder()
       .setTitle("Removed from the ladder")
       .setDescription(
-        `Your **${elementLabel}** entry reached ${dodgedDodgeCount} dodges against it and has been automatically removed from the ladder.`,
+        `You reached ${dodgedDodgeCount} dodges against you and have been automatically removed from the ladder.`,
       )
       .setColor(0x992d22);
     try {
@@ -56,7 +52,7 @@ export async function handleDodgeCountThreshold(
 
     const lmEmbed = new EmbedBuilder()
       .setDescription(
-        `🚫 <@${dodgedUserId}>'s **${elementLabel}** entry reached ${dodgedDodgeCount} dodges against it and was automatically removed from the ladder.`,
+        `🚫 <@${dodgedUserId}> reached ${dodgedDodgeCount} dodges against them and was automatically removed from the ladder.`,
       )
       .setColor(0x992d22);
     await notify.leagueManagers(client, { embeds: [lmEmbed] });
@@ -68,7 +64,7 @@ export async function handleDodgeCountThreshold(
   const dmEmbed = new EmbedBuilder()
     .setTitle("Dodge warning")
     .setDescription(
-      `Your **${elementLabel}** entry now has **${dodgedDodgeCount}** dodges against it. One more and it will be ` +
+      `You now have **${dodgedDodgeCount}** dodges against you. One more and you'll be ` +
         `automatically removed from the ladder. Completing a challenge (win or lose) removes one dodge from the count.`,
     )
     .setColor(0xe67e22);
@@ -81,7 +77,7 @@ export async function handleDodgeCountThreshold(
 
   const lmEmbed = new EmbedBuilder()
     .setDescription(
-      `⚠️ <@${dodgedUserId}>'s **${elementLabel}** entry now has ${dodgedDodgeCount} dodges against it — ` +
+      `⚠️ <@${dodgedUserId}> now has ${dodgedDodgeCount} dodges against them — ` +
         `one more triggers automatic removal from the ladder.`,
     )
     .setColor(0xe67e22);

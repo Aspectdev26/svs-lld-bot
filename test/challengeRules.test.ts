@@ -8,9 +8,6 @@ function row(rank: number, userId: string, overrides: Partial<LadderRow> = {}): 
   return {
     sheetRow: rank + 1,
     rank,
-    element: "Fire",
-    build: "Vita",
-    characterName: `Char${userId}`,
     discordName: `User${userId}`,
     discordUserId: userId,
     status: "Available",
@@ -37,8 +34,8 @@ describe("checkChallenge - basic range", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toBeNull();
@@ -52,8 +49,8 @@ describe("checkChallenge - basic range", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toMatch(/more than 3 ranks/);
@@ -67,8 +64,8 @@ describe("checkChallenge - basic range", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toMatch(/ranked above you/);
@@ -81,8 +78,8 @@ describe("checkChallenge - basic range", () => {
       ladder,
       challenger,
       defender: challenger,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toMatch(/challenge yourself/);
@@ -98,8 +95,8 @@ describe("checkChallenge - top tier sub-rule", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toBeNull();
@@ -113,8 +110,8 @@ describe("checkChallenge - top tier sub-rule", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toMatch(/top 10/);
@@ -130,14 +127,14 @@ describe("checkChallenge - vacation and pending matches", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toMatch(/Vacation/);
   });
 
-  it("rejects when the challenger's entry already has a pending match", () => {
+  it("rejects when the challenger already has a pending match", () => {
     const ladder = buildLadder(12);
     const challenger = ladder.find((r) => r.rank === 5)!;
     const defender = ladder.find((r) => r.rank === 4)!;
@@ -145,14 +142,14 @@ describe("checkChallenge - vacation and pending matches", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: true,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: true,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toMatch(/already has a match in progress|match in progress/);
   });
 
-  it("rejects when the defender's entry already has a pending match", () => {
+  it("rejects when the defender already has a pending match", () => {
     const ladder = buildLadder(12);
     const challenger = ladder.find((r) => r.rank === 5)!;
     const defender = ladder.find((r) => r.rank === 4)!;
@@ -160,8 +157,8 @@ describe("checkChallenge - vacation and pending matches", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: true,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: true,
       rules,
     });
     expect(result).toMatch(/match in progress/);
@@ -177,8 +174,8 @@ describe("checkChallenge - post-loss cooldown", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       cooldownExpiresAt: new Date(Date.now() + 60 * 60 * 1000),
       rules,
     });
@@ -193,8 +190,8 @@ describe("checkChallenge - post-loss cooldown", () => {
       ladder,
       challenger,
       defender,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       cooldownExpiresAt: null,
       rules,
     });
@@ -202,23 +199,7 @@ describe("checkChallenge - post-loss cooldown", () => {
   });
 });
 
-describe("getEligibleTargets - skip-self counting", () => {
-  it("does not count the challenger's own other-element rows against their range", () => {
-    // Ladder: rank1..rank5 all different users, except rank3 belongs to the same user as the rank5 challenger.
-    const ladder = buildLadder(6);
-    const sameUser = "u5";
-    ladder[2] = row(3, sameUser, { element: "Cold" }); // rank 3 owned by the same player as rank 5
-    const challenger = ladder.find((r) => r.rank === 5)!; // owned by u5, element Fire
-
-    const eligible = getEligibleTargets(ladder, challenger, rules);
-    const ranks = eligible.map((e) => e.row.rank);
-
-    // Own rank-3 row must never appear as a target, and since it's skipped (not counted),
-    // range should still reach 3 *other* players: ranks 4, 2, 1.
-    expect(ranks).not.toContain(3);
-    expect(ranks).toEqual([4, 2, 1]);
-  });
-
+describe("getEligibleTargets - Vacation skipping", () => {
   it("does not count a Vacationing player's row against the range either", () => {
     const ladder = buildLadder(6).map((r) => (r.rank === 3 ? { ...r, status: "Vacation" as const } : r));
     const challenger = ladder.find((r) => r.rank === 5)!;
@@ -248,8 +229,8 @@ describe("isTargetReachable - top-tier display filtering", () => {
       ladder,
       challenger,
       defender: ladder.find((r) => r.rank === 10)!,
-      challengerEntryHasPendingMatch: false,
-      defenderEntryHasPendingMatch: false,
+      challengerHasPendingMatch: false,
+      defenderHasPendingMatch: false,
       rules,
     });
     expect(result).toMatch(/top 10/);

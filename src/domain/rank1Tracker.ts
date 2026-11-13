@@ -38,11 +38,11 @@ export async function recordMatchResult(
 
   if (winnerIsChallenger) {
     await rank1Repo.crownHolder(challengerEntry);
-    return { changed: true, kind: "newChampion", holderName: challengerEntry.characterName };
+    return { changed: true, kind: "newChampion", holderName: challengerEntry.discordName };
   }
 
   const [defends] = await Promise.all([rank1Repo.recordDefend(defenderEntry), seasonStatsRepo.recordDefend(defenderEntry)]);
-  return { changed: true, kind: "defended", holderName: defenderEntry.characterName, defends };
+  return { changed: true, kind: "defended", holderName: defenderEntry.discordName, defends };
 }
 
 /**
@@ -64,7 +64,7 @@ export async function syncToCurrentHolder(ladder: LadderRow[]): Promise<void> {
   const newHolder = ladder.find((r) => r.rank === 1);
   if (!newHolder) return;
   const current = await rank1Repo.getCurrentHolderRow();
-  if (current && current.discordUserId === newHolder.discordUserId && current.element === newHolder.element) {
+  if (current && current.discordUserId === newHolder.discordUserId) {
     return; // same holder as before — leave their defend total alone
   }
   await rank1Repo.crownHolder(newHolder);

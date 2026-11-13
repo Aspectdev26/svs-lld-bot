@@ -11,7 +11,6 @@ import * as dodgesRepo from "../sheets/dodgesRepo.js";
 import { isDodgeEligible, createDodgeRequest } from "../domain/dodgeService.js";
 import { notify } from "./notify.js";
 import { scheduleReplyCleanup } from "./ephemeralCleanup.js";
-import { formatElement } from "../util/formatElement.js";
 import type { MatchRow } from "../types.js";
 
 /**
@@ -74,7 +73,7 @@ export async function submitDodgeRequest(
     .setTitle("Dodge request")
     .setDescription(
       `**Requested by:** <@${interaction.user.id}>\n**Opponent:** <@${opponentUserId}>\n` +
-        `**Match:** \`${match.matchId}\` — ${formatElement(match.challengerElement)} vs ${formatElement(match.defenderElement)}\n` +
+        `**Match:** \`${match.matchId}\`\n` +
         `**Match created:** <t:${Math.floor(Date.parse(match.createdAt) / 1000)}:R>`,
     )
     .setImage(`attachment://${screenshot.name}`)

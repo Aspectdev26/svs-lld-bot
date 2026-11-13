@@ -7,7 +7,6 @@ import { notify } from "./notify.js";
 import { closeMatchChannel } from "./matchChannels.js";
 import { refreshTop10Panel } from "./top10Panel.js";
 import { refreshActiveChallengesPanel } from "./activeChallengesPanel.js";
-import { formatElement } from "../util/formatElement.js";
 import type { MatchRow } from "../types.js";
 
 export const WINNER_SELECT_PREFIX = "reportwin_winner_select";
@@ -17,7 +16,7 @@ export type BuildWinnerPromptResult =
   | { ok: false; reason: string };
 
 /**
- * Fetches the match + both participants' character names and builds the "who won?" dropdown,
+ * Fetches the match + both participants' names and builds the "who won?" dropdown,
  * shared by the /report-win slash command and the in-channel Report Win button. `requesterUserId`
  * must be one of the two participants; either side can be picked as the winner (self-report,
  * concede, or correct a mistake).
@@ -32,11 +31,11 @@ export async function buildWinnerPrompt(matchId: string, requesterUserId: string
   }
 
   const [challengerEntry, defenderEntry] = await Promise.all([
-    ladderRepo.findEntry(match.challengerUserId, match.challengerElement),
-    ladderRepo.findEntry(match.defenderUserId, match.defenderElement),
+    ladderRepo.findEntry(match.challengerUserId),
+    ladderRepo.findEntry(match.defenderUserId),
   ]);
-  const challengerName = challengerEntry?.characterName ?? "Challenger";
-  const defenderName = defenderEntry?.characterName ?? "Defender";
+  const challengerName = challengerEntry?.discordName ?? "Challenger";
+  const defenderName = defenderEntry?.discordName ?? "Defender";
 
   // No option is pre-selected (`default: true`) on purpose: some Discord clients won't fire the
   // interaction when you "pick" an option that's already shown as selected, which made reporting
@@ -46,14 +45,8 @@ export async function buildWinnerPrompt(matchId: string, requesterUserId: string
     .setCustomId(`${WINNER_SELECT_PREFIX}:${matchId}`)
     .setPlaceholder("Who won?")
     .addOptions(
-      {
-        label: `${challengerName} (${formatElement(match.challengerElement)})`,
-        value: match.challengerUserId,
-      },
-      {
-        label: `${defenderName} (${formatElement(match.defenderElement)})`,
-        value: match.defenderUserId,
-      },
+      { label: `${challengerName} (challenger)`.slice(0, 100), value: match.challengerUserId },
+      { label: `${defenderName} (defender)`.slice(0, 100), value: match.defenderUserId },
     );
 
   return { ok: true, match, row: new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select) };
@@ -71,7 +64,7 @@ export async function finalizeReportWin(
 
   const { match, winnerMovedUp, rank1Update } = result;
   let description =
-    `🏆 <@${match.winnerUserId}> won the match (\`${match.matchId}\`) between <@${match.challengerUserId}> (${formatElement(match.challengerElement)}) and <@${match.defenderUserId}> (${formatElement(match.defenderElement)}).` +
+    `🏆 <@${match.winnerUserId}> won the match (\`${match.matchId}\`) between <@${match.challengerUserId}> and <@${match.defenderUserId}>.` +
     (winnerMovedUp ? "\nThe challenger has taken the defender's rank." : "\nNo rank change — the defender held their spot.");
 
   if (rank1Update.changed) {

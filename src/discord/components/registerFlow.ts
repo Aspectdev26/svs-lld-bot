@@ -4,31 +4,21 @@ import {
   ButtonStyle,
   EmbedBuilder,
   ModalBuilder,
-  StringSelectMenuBuilder,
   TextInputBuilder,
   TextInputStyle,
   type ButtonInteraction,
   type GuildMember,
   type ModalSubmitInteraction,
-  type StringSelectMenuInteraction,
 } from "discord.js";
 import { config } from "../../config.js";
-import { ELEMENTS, BUILDS } from "../../types.js";
-import type { Element, Build } from "../../types.js";
 import * as signupRequestsRepo from "../../sheets/signupRequestsRepo.js";
-import * as bannedRepo from "../../sheets/bannedRepo.js";
 import { createSignupRequest, approveSignup, denySignup } from "../../domain/signupService.js";
 import { isLeagueManager } from "../permissions.js";
 import { notify, postAutoDeletingConfirmation, deleteMessageByUrl } from "../notify.js";
 import { refreshTop10Panel } from "../top10Panel.js";
 import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
-import { formatElement } from "../../util/formatElement.js";
 import type { SignupRequestRow } from "../../types.js";
 
-const ELEMENT_SELECT_ID = "reg_element_select";
-const BUILD_SELECT_PREFIX = "reg_build_select";
-const NAME_MODAL_PREFIX = "reg_name_modal";
-const NAME_INPUT_ID = "character_name";
 export const DENY_MODAL_PREFIX = "reg_deny_modal";
 const DENY_REASON_INPUT_ID = "reg_deny_reason";
 
@@ -45,63 +35,6 @@ function randomSaying(): string {
   return JOIN_SAYINGS[Math.floor(Math.random() * JOIN_SAYINGS.length)];
 }
 
-export async function handleRegisterStartButton(interaction: ButtonInteraction): Promise<void> {
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(ELEMENT_SELECT_ID)
-    .setPlaceholder("Choose your element")
-    .addOptions(ELEMENTS.map((e) => ({ label: formatElement(e), value: e })));
-
-  await interaction.reply({
-    content: "**Step 1/3 — Element:** which element is this character?",
-    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
-    ephemeral: true,
-  });
-}
-
-export async function handleElementSelect(interaction: StringSelectMenuInteraction): Promise<void> {
-  const element = interaction.values[0] as Element;
-
-  const ban = await bannedRepo.isBanned(interaction.user.id, element);
-  if (ban) {
-    await interaction.update({
-      content: `You're banned from signing up${ban.element === "ALL" ? "" : ` with **${formatElement(element)}**`}${ban.reason ? ` (reason: ${ban.reason})` : ""}.`,
-      components: [],
-    });
-    scheduleReplyCleanup(interaction);
-    return;
-  }
-
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`${BUILD_SELECT_PREFIX}:${element}`)
-    .setPlaceholder("Choose your build")
-    .addOptions(BUILDS.map((b) => ({ label: b, value: b })));
-
-  await interaction.update({
-    content: `**Step 2/3 — Build:** element set to **${formatElement(element)}**. Which build?`,
-    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
-  });
-}
-
-export async function handleBuildSelect(interaction: StringSelectMenuInteraction): Promise<void> {
-  const element = interaction.customId.slice(`${BUILD_SELECT_PREFIX}:`.length) as Element;
-  const build = interaction.values[0] as Build;
-
-  const modal = new ModalBuilder()
-    .setCustomId(`${NAME_MODAL_PREFIX}:${element}:${build}`)
-    .setTitle("Character name")
-    .addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder()
-          .setCustomId(NAME_INPUT_ID)
-          .setLabel("What's this character's name?")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setMaxLength(32),
-      ),
-    );
-  await interaction.showModal(modal);
-}
-
 /** Shared by the auto-post on submission and the admin dashboard's "Pending Sign-ups" recovery view. */
 export function buildSignupReviewMessage(request: SignupRequestRow): {
   embed: EmbedBuilder;
@@ -109,10 +42,7 @@ export function buildSignupReviewMessage(request: SignupRequestRow): {
 } {
   const embed = new EmbedBuilder()
     .setTitle("New signup request")
-    .setDescription(
-      `**Character:** ${request.characterName}\n**Element:** ${formatElement(request.element)}\n**Build:** ${request.build}\n` +
-        `**Requested by:** <@${request.discordUserId}>`,
-    )
+    .setDescription(`**Player:** <@${request.discordUserId}> (${request.discordName})`)
     .setColor(0x9b59b6);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -123,16 +53,8 @@ export function buildSignupReviewMessage(request: SignupRequestRow): {
   return { embed, row };
 }
 
-export async function handleNameModal(interaction: ModalSubmitInteraction): Promise<void> {
-  const [, element, build] = interaction.customId.split(":") as [string, Element, Build];
-  const characterName = interaction.fields.getTextInputValue(NAME_INPUT_ID).trim();
-
-  if (!characterName) {
-    await interaction.reply({ content: "Character name can't be empty — please try again.", ephemeral: true });
-    scheduleReplyCleanup(interaction);
-    return;
-  }
-
+/** One click — the signup request is just the player's Discord name, no choices to make. */
+export async function handleRegisterStartButton(interaction: ButtonInteraction): Promise<void> {
   // Acknowledge immediately — Discord expires the interaction after 3s, and the Sheets calls
   // below (ban check, duplicate checks, the write itself) can exceed that under any latency.
   await interaction.deferReply({ ephemeral: true });
@@ -142,7 +64,7 @@ export async function handleNameModal(interaction: ModalSubmitInteraction): Prom
       ? (interaction.member.displayName as string)
       : interaction.user.username;
 
-  const result = await createSignupRequest(interaction.user.id, discordName, characterName, element, build);
+  const result = await createSignupRequest(interaction.user.id, discordName);
   if (!result.ok) {
     await interaction.editReply({ content: result.reason });
     scheduleReplyCleanup(interaction);
@@ -150,7 +72,7 @@ export async function handleNameModal(interaction: ModalSubmitInteraction): Prom
   }
 
   await interaction.editReply({
-    content: `Signup request submitted for **${characterName}** (${formatElement(element)}, ${build}) — a League Manager will review it shortly.`,
+    content: "Signup request submitted — a League Manager will review it shortly.",
   });
   scheduleReplyCleanup(interaction);
 
@@ -222,13 +144,13 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
   await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
   await postAutoDeletingConfirmation(
     interaction.client,
-    `✅ Approved by <@${interaction.user.id}>. **${entry.characterName}** is on the ladder!`,
+    `✅ Approved by <@${interaction.user.id}>. <@${entry.discordUserId}> is on the ladder!`,
   );
 
   const embed = new EmbedBuilder()
     .setTitle("🎉 New Challenger Has Entered The Ladder! 🎉")
     .setDescription(
-      `**${entry.characterName}** (${formatElement(entry.element)} • ${entry.build}) has joined at **Rank ${entry.rank}**!\n\n*"${randomSaying()}"*`,
+      `<@${entry.discordUserId}> has joined at **Rank ${entry.rank}**!\n\n*"${randomSaying()}"*`,
     )
     .setColor(0xf1c40f);
 
@@ -240,7 +162,7 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
   try {
     const requester = await interaction.client.users.fetch(entry.discordUserId);
     await requester.send({
-      content: `🎉 You've been approved! **${entry.characterName}** (${formatElement(entry.element)}, ${entry.build}) is now on the ladder at rank ${entry.rank}.`,
+      content: `🎉 You've been approved! You're now on the ladder at rank ${entry.rank}.`,
     });
   } catch {
     // DMs closed — the public results-channel post above already covers it.
@@ -285,7 +207,7 @@ export async function handleRegisterDenyModal(interaction: ModalSubmitInteractio
 
   const embed = new EmbedBuilder()
     .setTitle("Your signup request was denied")
-    .setDescription(`**Character:** ${request.characterName} (${formatElement(request.element)}, ${request.build})\n**Reason:** ${reason}`)
+    .setDescription(`**Reason:** ${reason}`)
     .setColor(0xe74c3c);
 
   try {

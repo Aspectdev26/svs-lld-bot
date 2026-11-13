@@ -1,25 +1,22 @@
 import { addSheetTab, appendSheetRow, getSheetMetaByName, readSheetRange, updateSheetRow, writeSheetRows } from "./sheetsClient.js";
 import * as settingsRepo from "./settingsRepo.js";
 import { applyStandardTabFormatting } from "./sheetFormatting.js";
-import type { Build, Element, LadderRow, SeasonStatsRow } from "../types.js";
+import type { LadderRow, SeasonStatsRow } from "../types.js";
 
 /** Legacy/fallback tab name, used until the first reset under the named-season-tab scheme. */
 export const SEASON_STATS_SHEET = "SeasonStats";
-export const SEASON_STATS_HEADERS = ["DiscordUserID", "DiscordName", "CharacterName", "Element", "Build", "Defends", "Wins", "Losses"];
+export const SEASON_STATS_HEADERS = ["DiscordUserID", "DiscordName", "Defends", "Wins", "Losses"];
 
 export function toValues(row: Omit<SeasonStatsRow, "sheetRow">): (string | number)[] {
-  return [row.discordUserId, row.discordName, row.characterName, row.element, row.build, row.defends, row.wins, row.losses];
+  return [row.discordUserId, row.discordName, row.defends, row.wins, row.losses];
 }
 
 function rowFromValues(sheetRow: number, values: string[]): SeasonStatsRow {
-  const [discordUserId, discordName, characterName, element, build, defends, wins, losses] = values;
+  const [discordUserId, discordName, defends, wins, losses] = values;
   return {
     sheetRow,
     discordUserId: discordUserId ?? "",
     discordName: discordName ?? "",
-    characterName: characterName ?? "",
-    element: element as Element,
-    build: build as Build,
     defends: Number.parseInt(defends, 10) || 0,
     wins: Number.parseInt(wins, 10) || 0,
     losses: Number.parseInt(losses, 10) || 0,
@@ -36,13 +33,13 @@ async function currentSheetName(): Promise<string> {
 }
 
 async function getRowsForSheet(sheetName: string): Promise<SeasonStatsRow[]> {
-  const values = await readSheetRange(`${sheetName}!A2:H`);
+  const values = await readSheetRange(`${sheetName}!A2:E`);
   return values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is SeasonStatsRow => r !== null);
 }
 
-/** Every character with recorded activity so far this season. */
+/** Every player with recorded activity so far this season. */
 export async function getAllRows(): Promise<SeasonStatsRow[]> {
   const sheetName = await currentSheetName();
   return getRowsForSheet(sheetName);
@@ -65,7 +62,7 @@ export async function loadCache(): Promise<{ sheetName: string; rows: SeasonStat
 async function upsertStat(entry: LadderRow, field: "defends" | "wins" | "losses", cache?: { sheetName: string; rows: SeasonStatsRow[] }): Promise<number> {
   const sheetName = cache?.sheetName ?? (await currentSheetName());
   const rows = cache?.rows ?? (await getRowsForSheet(sheetName));
-  const existing = rows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
+  const existing = rows.find((r) => r.discordUserId === entry.discordUserId);
   const newValue = (existing?.[field] ?? 0) + 1;
 
   if (existing) {
@@ -76,9 +73,6 @@ async function upsertStat(entry: LadderRow, field: "defends" | "wins" | "losses"
       toValues({
         discordUserId: entry.discordUserId,
         discordName: entry.discordName,
-        characterName: entry.characterName,
-        element: entry.element,
-        build: entry.build,
         defends: field === "defends" ? 1 : 0,
         wins: field === "wins" ? 1 : 0,
         losses: field === "losses" ? 1 : 0,
@@ -110,14 +104,14 @@ export async function tabExists(name: string): Promise<boolean> {
 
 /**
  * Appends a 0/0/0 row for every ladder entry with no recorded activity into the current season's
- * tab, so historically-active-but-quiet characters still show up once that tab stops being
+ * tab, so quiet players still show up once that tab stops being
  * written to and becomes this season's permanent record.
  */
 export async function backfillInactiveEntries(ladder: LadderRow[]): Promise<void> {
   const sheetName = await currentSheetName();
   const rows = await getAllRows();
-  const statKeys = new Set(rows.map((r) => `${r.discordUserId}:${r.element}`));
-  const inactive = ladder.filter((entry) => !statKeys.has(`${entry.discordUserId}:${entry.element}`));
+  const statKeys = new Set(rows.map((r) => r.discordUserId));
+  const inactive = ladder.filter((entry) => !statKeys.has(entry.discordUserId));
 
   for (const entry of inactive) {
     await appendSheetRow(
@@ -125,9 +119,6 @@ export async function backfillInactiveEntries(ladder: LadderRow[]): Promise<void
       toValues({
         discordUserId: entry.discordUserId,
         discordName: entry.discordName,
-        characterName: entry.characterName,
-        element: entry.element,
-        build: entry.build,
         defends: 0,
         wins: 0,
         losses: 0,

@@ -6,9 +6,6 @@ function row(rank: number): LadderRow {
   return {
     sheetRow: rank + 1,
     rank,
-    element: "Fire",
-    build: "Vita",
-    characterName: `Char${rank}`,
     discordName: `User${rank}`,
     discordUserId: `u${rank}`,
     status: "Available",

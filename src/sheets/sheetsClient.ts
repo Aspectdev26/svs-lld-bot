@@ -206,10 +206,16 @@ export async function ensureSheetTabs(tabs: { name: string; headers: string[] }[
   }
 
   for (const tab of tabs) {
-    const existingHeader = await readSheetRange(`${tab.name}!A1:${String.fromCharCode(64 + tab.headers.length)}1`);
-    // Also re-writes the header row if it's shorter than expected, so schema additions (new
-    // trailing columns) get backfilled on an existing sheet without touching existing data rows.
-    if (existingHeader.length === 0 || (existingHeader[0]?.length ?? 0) < tab.headers.length) {
+    const existingHeader = await readSheetRange(`${tab.name}!A1:Z1`);
+    const current = existingHeader[0] ?? [];
+    // Re-writes the header row whenever it doesn't match exactly, so schema changes get applied to
+    // an existing sheet. Stale headers left past the new last column are cleared too. This never
+    // touches data rows — a layout change still needs `npm run reset-league` to wipe old data.
+    const matches = current.length === tab.headers.length && tab.headers.every((h, i) => current[i] === h);
+    if (!matches) {
+      if (current.length > tab.headers.length) {
+        await clearSheetRange(tab.name, "A1:Z1");
+      }
       await updateSheetRow(tab.name, 1, tab.headers);
     }
   }

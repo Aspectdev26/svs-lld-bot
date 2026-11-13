@@ -3,9 +3,8 @@ import * as ladderRepo from "../../../sheets/ladderRepo.js";
 import * as matchService from "../../../domain/matchService.js";
 import { isLeagueManager } from "../../permissions.js";
 import { notify } from "../../notify.js";
-import { buildLadderCharacterSelectRow } from "./characterSelect.js";
+import { buildLadderPlayerSelectRow } from "./playerSelect.js";
 import { scheduleReplyCleanup, scheduleMessageCleanup } from "../../ephemeralCleanup.js";
-import { formatElement } from "../../../util/formatElement.js";
 
 export const VACATION_SELECT_ID = "admin_vacation_select";
 
@@ -28,9 +27,9 @@ export async function handleVacationStart(interaction: ButtonInteraction): Promi
     return;
   }
 
-  const row = buildLadderCharacterSelectRow(ladder, VACATION_SELECT_ID, "Choose a character");
+  const row = buildLadderPlayerSelectRow(ladder, VACATION_SELECT_ID, "Choose a player");
   await interaction.reply({
-    content: "**Toggle Vacation for which character?** (selecting toggles their current status)",
+    content: "**Toggle Vacation for which player?** (selecting toggles their current status)",
     components: [row],
     ephemeral: true,
   });
@@ -51,10 +50,10 @@ export async function handleVacationSelect(interaction: StringSelectMenuInteract
   const goingOnVacation = entry.status !== "Vacation";
 
   if (goingOnVacation) {
-    const hasPending = await matchService.entryHasPendingMatch(entry.discordUserId, entry.element);
+    const hasPending = await matchService.playerHasPendingMatch(entry.discordUserId);
     if (hasPending) {
       await interaction.update({
-        content: `**${entry.characterName}** (${formatElement(entry.element)}) has an active match — resolve or cancel it before setting Vacation.`,
+        content: `<@${entry.discordUserId}> has an active match — resolve or cancel it before setting Vacation.`,
         components: [],
       });
       scheduleReplyCleanup(interaction);
@@ -67,7 +66,7 @@ export async function handleVacationSelect(interaction: StringSelectMenuInteract
   await ladderRepo.setStatusForEntry(entry.sheetRow, goingOnVacation ? "Vacation" : "Available");
 
   const followUp = await interaction.followUp({
-    content: `**${entry.characterName}** (${formatElement(entry.element)}) is now ${goingOnVacation ? "on **Vacation**" : "**Available**"}.`,
+    content: `<@${entry.discordUserId}> is now ${goingOnVacation ? "on **Vacation**" : "**Available**"}.`,
     ephemeral: true,
   });
   scheduleReplyCleanup(interaction);
@@ -76,8 +75,8 @@ export async function handleVacationSelect(interaction: StringSelectMenuInteract
   const embed = new EmbedBuilder()
     .setDescription(
       goingOnVacation
-        ? `🌴 **${entry.characterName}** (${formatElement(entry.element)}) — <@${entry.discordUserId}> — was set to **Vacation** by <@${interaction.user.id}> and can't be challenged until they're back.`
-        : `✅ **${entry.characterName}** (${formatElement(entry.element)}) — <@${entry.discordUserId}> — was marked **Available** again by <@${interaction.user.id}>.`,
+        ? `🌴 <@${entry.discordUserId}> was set to **Vacation** by <@${interaction.user.id}> and can't be challenged until they're back.`
+        : `✅ <@${entry.discordUserId}> was marked **Available** again by <@${interaction.user.id}>.`,
     )
     .setColor(goingOnVacation ? 0x95a5a6 : 0x2ecc71);
   await notify.challenges(interaction.client, { embeds: [embed] });

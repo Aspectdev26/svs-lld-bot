@@ -9,7 +9,6 @@ import * as signupRequestsRepo from "../../../sheets/signupRequestsRepo.js";
 import { isLeagueManager } from "../../permissions.js";
 import { buildSignupReviewMessage } from "../registerFlow.js";
 import { scheduleReplyCleanup } from "../../ephemeralCleanup.js";
-import { formatElement } from "../../../util/formatElement.js";
 
 export const PENDING_SIGNUPS_SELECT_ID = "admin_pending_signup_select";
 
@@ -32,8 +31,7 @@ export async function handlePendingSignupsStart(interaction: ButtonInteraction):
     .setPlaceholder("Choose a pending request to review")
     .addOptions(
       pending.slice(0, 25).map((r) => ({
-        label: `${r.characterName} (${formatElement(r.element)}, ${r.build})`,
-        description: `Requested by ${r.discordName}`.slice(0, 100),
+        label: r.discordName.slice(0, 100) || r.discordUserId,
         value: r.requestId,
       })),
     );

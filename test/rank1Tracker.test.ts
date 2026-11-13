@@ -26,9 +26,6 @@ function entry(overrides: Partial<LadderRow> = {}): LadderRow {
   return {
     sheetRow: 2,
     rank: 1,
-    element: "Fire",
-    build: "Vita",
-    characterName: "Alice",
     discordName: "alice#discord",
     discordUserId: "u-alice",
     status: "Available",
@@ -47,9 +44,6 @@ function rank1Row(overrides: Partial<Rank1Row> = {}): Rank1Row {
     sheetRow: 2,
     discordUserId: "u-alice",
     discordName: "alice#discord",
-    characterName: "Alice",
-    element: "Fire",
-    build: "Vita",
     defends: 3,
     holderSince: "2026-01-01T00:00:00.000Z",
     currentHolder: true,
@@ -78,8 +72,8 @@ beforeEach(() => {
 
 describe("recordMatchResult", () => {
   it("does nothing to the rank-1 tracker but still records win/loss when the defender wasn't rank 1", async () => {
-    const defender = entry({ rank: 5, discordUserId: "u-bob", characterName: "Bob" });
-    const challenger = entry({ rank: 8, discordUserId: "u-carl", characterName: "Carl" });
+    const defender = entry({ rank: 5, discordUserId: "u-bob", discordName: "Bob" });
+    const challenger = entry({ rank: 8, discordUserId: "u-carl", discordName: "Carl" });
 
     const result = await recordMatchResult(5, defender, challenger, true);
 
@@ -93,8 +87,8 @@ describe("recordMatchResult", () => {
   });
 
   it("crowns the challenger as new champion and records win/loss when they beat rank 1", async () => {
-    const defender = entry({ discordUserId: "u-alice", characterName: "Alice" });
-    const challenger = entry({ rank: 2, discordUserId: "u-carl", characterName: "Carl" });
+    const defender = entry({ discordUserId: "u-alice", discordName: "Alice" });
+    const challenger = entry({ rank: 2, discordUserId: "u-carl", discordName: "Carl" });
 
     const result = await recordMatchResult(1, defender, challenger, true);
 
@@ -107,8 +101,8 @@ describe("recordMatchResult", () => {
   });
 
   it("increments the defend total (and win/loss) when the current rank-1 holder wins", async () => {
-    const defender = entry({ discordUserId: "u-alice", characterName: "Alice" });
-    const challenger = entry({ rank: 2, discordUserId: "u-carl", characterName: "Carl" });
+    const defender = entry({ discordUserId: "u-alice", discordName: "Alice" });
+    const challenger = entry({ rank: 2, discordUserId: "u-carl", discordName: "Carl" });
     vi.mocked(rank1Repo.recordDefend).mockResolvedValue(4);
 
     const result = await recordMatchResult(1, defender, challenger, false);
@@ -124,8 +118,8 @@ describe("recordMatchResult", () => {
   });
 
   it("still records a first defend when the tracker was empty or out of sync", async () => {
-    const defender = entry({ discordUserId: "u-alice", characterName: "Alice" });
-    const challenger = entry({ rank: 2, discordUserId: "u-carl", characterName: "Carl" });
+    const defender = entry({ discordUserId: "u-alice", discordName: "Alice" });
+    const challenger = entry({ rank: 2, discordUserId: "u-carl", discordName: "Carl" });
     vi.mocked(rank1Repo.recordDefend).mockResolvedValue(1);
 
     const result = await recordMatchResult(1, defender, challenger, false);
@@ -137,7 +131,7 @@ describe("recordMatchResult", () => {
 
 describe("recordDodgeAgainst", () => {
   it("delegates to rank1Repo.recordDodgeAgainst and returns its result", async () => {
-    const defender = entry({ discordUserId: "u-alice", characterName: "Alice" });
+    const defender = entry({ discordUserId: "u-alice", discordName: "Alice" });
     vi.mocked(rank1Repo.recordDodgeAgainst).mockResolvedValue(5);
 
     const result = await recordDodgeAgainst(defender);
@@ -156,7 +150,7 @@ describe("syncToCurrentHolder", () => {
   });
 
   it("leaves the tracker alone when the rank-1 holder didn't change", async () => {
-    vi.mocked(rank1Repo.getCurrentHolderRow).mockResolvedValue(rank1Row({ discordUserId: "u-alice", element: "Fire" }));
+    vi.mocked(rank1Repo.getCurrentHolderRow).mockResolvedValue(rank1Row({ discordUserId: "u-alice" }));
 
     await syncToCurrentHolder([entry({ discordUserId: "u-alice", element: "Fire", rank: 1 })]);
 
@@ -164,8 +158,8 @@ describe("syncToCurrentHolder", () => {
   });
 
   it("crowns whoever now holds rank 1 when the holder changed", async () => {
-    vi.mocked(rank1Repo.getCurrentHolderRow).mockResolvedValue(rank1Row({ discordUserId: "u-alice", element: "Fire" }));
-    const newHolder = entry({ discordUserId: "u-carl", characterName: "Carl", rank: 1 });
+    vi.mocked(rank1Repo.getCurrentHolderRow).mockResolvedValue(rank1Row({ discordUserId: "u-alice" }));
+    const newHolder = entry({ discordUserId: "u-carl", discordName: "Carl", rank: 1 });
 
     await syncToCurrentHolder([newHolder]);
 

@@ -7,38 +7,34 @@ import * as rank1Tracker from "./rank1Tracker.js";
 import * as pointsService from "./pointsService.js";
 import { formatChallengeDate } from "../util/formatDate.js";
 import type { Rank1Update } from "./rank1Tracker.js";
-import type { Element, LadderRow, MatchRow } from "../types.js";
+import type { LadderRow, MatchRow } from "../types.js";
 
 export function genId(): string {
   return randomUUID().slice(0, 8);
 }
 
-/** A player is limited to one pending match per element-entry, not one pending match overall. */
-export async function entryHasPendingMatch(discordUserId: string, element: Element): Promise<boolean> {
-  const match = await matchesRepo.getPendingMatchForEntry(discordUserId, element);
+/** A player is limited to one pending match at a time. */
+export async function playerHasPendingMatch(discordUserId: string): Promise<boolean> {
+  const match = await matchesRepo.getPendingMatchForPlayer(discordUserId);
   return match !== undefined;
 }
 
 /**
- * If `challengerElement`'s entry most recently lost to `defenderElement`'s entry within the
- * configured cooldown window, returns when that cooldown lifts; otherwise null. Only a reported
+ * If the challenger most recently lost to the defender within the configured cooldown window,
+ * returns when that cooldown lifts; otherwise null. Only a reported
  * loss counts — a dodge-approved match always credits the win to its own challenger, so it can
  * never represent this challenger losing.
  */
 export async function getChallengeCooldownExpiry(
   challengerUserId: string,
-  challengerElement: Element,
   defenderUserId: string,
-  defenderElement: Element,
 ): Promise<Date | null> {
   const all = await matchesRepo.getAllMatches();
   const losses = all.filter(
     (m) =>
       m.status === "Reported" &&
       m.challengerUserId === challengerUserId &&
-      m.challengerElement === challengerElement &&
       m.defenderUserId === defenderUserId &&
-      m.defenderElement === defenderElement &&
       m.winnerUserId === defenderUserId,
   );
   if (losses.length === 0) return null;
@@ -61,8 +57,8 @@ async function decrementDodgeCountIfAny(entry: LadderRow): Promise<void> {
 /** Fetches both ladder entries for a match and clears their Ladder-sheet "Challenge" display. */
 async function clearLadderChallengeDisplay(match: MatchRow): Promise<void> {
   const [challengerEntry, defenderEntry] = await Promise.all([
-    ladderRepo.findEntry(match.challengerUserId, match.challengerElement),
-    ladderRepo.findEntry(match.defenderUserId, match.defenderElement),
+    ladderRepo.findEntry(match.challengerUserId),
+    ladderRepo.findEntry(match.defenderUserId),
   ]);
   if (challengerEntry) await ladderRepo.clearChallengeInfo(challengerEntry.sheetRow);
   if (defenderEntry) await ladderRepo.clearChallengeInfo(defenderEntry.sheetRow);
@@ -75,10 +71,8 @@ export async function createMatch(challenger: LadderRow, defender: LadderRow): P
   const match: Omit<MatchRow, "sheetRow"> = {
     matchId: genId(),
     challengerUserId: challenger.discordUserId,
-    challengerElement: challenger.element,
     challengerRank: challenger.rank,
     defenderUserId: defender.discordUserId,
-    defenderElement: defender.element,
     defenderRank: defender.rank,
     status: "Pending",
     createdAt: now.toISOString(),
@@ -110,8 +104,6 @@ export type ReportWinResult =
  * Either participant may report a result (no confirmation step) — `reporterUserId` just has to be
  * one of the two participants, while `winnerUserId` is whichever side they picked from the
  * winner dropdown (their own side for a self-report, or the opponent's to concede/correct).
- * `matchId` disambiguates which of the reporter's (possibly several, one-per-element) pending
- * matches this result applies to.
  */
 export async function reportWin(reporterUserId: string, matchId: string, winnerUserId: string): Promise<ReportWinResult> {
   const match = await matchesRepo.getMatchById(matchId);
@@ -131,8 +123,8 @@ export async function reportWin(reporterUserId: string, matchId: string, winnerU
   let rank1Update: Rank1Update = { changed: false };
 
   const [challengerEntry, defenderEntry] = await Promise.all([
-    ladderRepo.findEntry(match.challengerUserId, match.challengerElement),
-    ladderRepo.findEntry(match.defenderUserId, match.defenderElement),
+    ladderRepo.findEntry(match.challengerUserId),
+    ladderRepo.findEntry(match.defenderUserId),
   ]);
 
   if (challengerEntry && defenderEntry) {
@@ -194,7 +186,7 @@ export async function expireMatch(match: MatchRow): Promise<void> {
   await matchesRepo.updateMatch(match);
   await clearLadderChallengeDisplay(match);
 
-  const challengerEntry = await ladderRepo.findEntry(match.challengerUserId, match.challengerElement);
+  const challengerEntry = await ladderRepo.findEntry(match.challengerUserId);
   if (challengerEntry) {
     await pointsService.recordMatchExpired(challengerEntry.discordUserId, challengerEntry.discordName);
   }
@@ -217,8 +209,8 @@ export interface ApplyDodgeWinResult {
 /** Apply a dodge-approved win for the challenger (same rank-swap rule as a normal reported win). */
 export async function applyDodgeWin(match: MatchRow): Promise<ApplyDodgeWinResult> {
   const [challengerEntry, defenderEntry] = await Promise.all([
-    ladderRepo.findEntry(match.challengerUserId, match.challengerElement),
-    ladderRepo.findEntry(match.defenderUserId, match.defenderElement),
+    ladderRepo.findEntry(match.challengerUserId),
+    ladderRepo.findEntry(match.defenderUserId),
   ]);
 
   let rank1Update: Rank1Update = { changed: false };

@@ -8,15 +8,12 @@ import {
   updateSheetCell,
   updateSheetRow,
 } from "./sheetsClient.js";
-import type { Build, Element, LadderDisplayStatus, LadderRow, PlayerStatus } from "../types.js";
+import type { LadderDisplayStatus, LadderRow, PlayerStatus } from "../types.js";
 
 export const LADDER_SHEET = "Ladder";
-/** Column order/labels match the league's original reference sheet exactly. */
+/** Column order/labels follow the league's original reference sheet, minus the old Name/spec/element columns. */
 export const LADDER_HEADERS = [
   "Rank",
-  "Name",
-  "spec",
-  "element",
   "discUser",
   "Status",
   "cDate",
@@ -32,9 +29,6 @@ export const LADDER_HEADERS = [
 function rowFromValues(sheetRow: number, values: string[]): LadderRow {
   const [
     rank,
-    characterName,
-    build,
-    element,
     discordName,
     status,
     challengeDate,
@@ -49,9 +43,6 @@ function rowFromValues(sheetRow: number, values: string[]): LadderRow {
   return {
     sheetRow,
     rank: Number.parseInt(rank, 10),
-    characterName: characterName ?? "",
-    build: build as Build,
-    element: element as Element,
     discordName: discordName ?? "",
     status: (status as LadderDisplayStatus) || "Available",
     challengeDate: challengeDate ?? "",
@@ -69,9 +60,6 @@ function rowFromValues(sheetRow: number, values: string[]): LadderRow {
 function toValues(entry: Omit<LadderRow, "sheetRow">): (string | number)[] {
   return [
     entry.rank,
-    entry.characterName,
-    entry.build,
-    entry.element,
     entry.discordName,
     entry.status,
     entry.challengeDate,
@@ -87,34 +75,17 @@ function toValues(entry: Omit<LadderRow, "sheetRow">): (string | number)[] {
 
 /** All ladder rows, ordered by their current rank ascending (rank 1 = top). */
 export async function getLadder(): Promise<LadderRow[]> {
-  const values = await readSheetRange(`${LADDER_SHEET}!A2:N`);
+  const values = await readSheetRange(`${LADDER_SHEET}!A2:K`);
   const rows = values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is LadderRow => r !== null);
   return rows.sort((a, b) => a.rank - b.rank);
 }
 
-export async function getPlayerRows(discordUserId: string): Promise<LadderRow[]> {
+/** A player's one ladder entry, if they're on the ladder. */
+export async function findEntry(discordUserId: string): Promise<LadderRow | undefined> {
   const ladder = await getLadder();
-  return ladder.filter((r) => r.discordUserId === discordUserId);
-}
-
-export async function findEntry(discordUserId: string, element: Element): Promise<LadderRow | undefined> {
-  const rows = await getPlayerRows(discordUserId);
-  return rows.find((r) => r.element === element);
-}
-
-/** Finds any ladder entry (any owner) sharing the same character name (case-insensitive), element, and build. */
-export async function findByCharacterNameElementBuild(
-  characterName: string,
-  element: Element,
-  build: Build,
-): Promise<LadderRow | undefined> {
-  const ladder = await getLadder();
-  const nameLower = characterName.trim().toLowerCase();
-  return ladder.find(
-    (r) => r.element === element && r.build === build && r.characterName.trim().toLowerCase() === nameLower,
-  );
+  return ladder.find((r) => r.discordUserId === discordUserId);
 }
 
 export async function addLadderEntry(entry: Omit<LadderRow, "sheetRow">): Promise<void> {
@@ -137,25 +108,25 @@ export async function setRanks(changes: { sheetRow: number; newRank: number }[])
   );
 }
 
-/** Sets Vacation/Available on one specific ladder entry (one character/element), not a player's whole roster. */
+/** Sets Vacation/Available on one ladder entry. */
 export async function setStatusForEntry(sheetRow: number, status: PlayerStatus): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "F", status);
+  await updateSheetCell(LADDER_SHEET, sheetRow, "C", status);
 }
 
 /** ISO timestamp of when this entry's status became "Vacation" — drives the 14-day auto-escalation watcher. Pass "" to clear. */
 export async function setVacationSince(sheetRow: number, iso: string): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "M", iso);
+  await updateSheetCell(LADDER_SHEET, sheetRow, "J", iso);
 }
 
 /** "Already warned about upcoming Vacation expiry" flag — see vacationWatcher.ts. Pass "" to clear. */
 export async function setVacationWarningSentAt(sheetRow: number, iso: string): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "N", iso);
+  await updateSheetCell(LADDER_SHEET, sheetRow, "K", iso);
 }
 
 /** Marks an entry as actively challenging: Status="Challenge" plus the opponent's rank and a display timestamp. */
 export async function setChallengeInfo(sheetRow: number, opponentRank: number, challengeDateDisplay: string): Promise<void> {
   await batchUpdateValues([
-    { range: `${LADDER_SHEET}!F${sheetRow}:H${sheetRow}`, values: [["Challenge", challengeDateDisplay, opponentRank]] },
+    { range: `${LADDER_SHEET}!C${sheetRow}:E${sheetRow}`, values: [["Challenge", challengeDateDisplay, opponentRank]] },
   ]);
 }
 
@@ -168,17 +139,17 @@ export async function clearChallengeInfo(sheetRow: number): Promise<void> {
 export async function clearChallengeInfoForRows(sheetRows: number[]): Promise<void> {
   if (sheetRows.length === 0) return;
   await batchUpdateValues(
-    sheetRows.map((row) => ({ range: `${LADDER_SHEET}!F${row}:H${row}`, values: [["Available", "", ""]] })),
+    sheetRows.map((row) => ({ range: `${LADDER_SHEET}!C${row}:E${row}`, values: [["Available", "", ""]] })),
   );
 }
 
 export async function setDodgeWins(sheetRow: number, count: number): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "K", count);
+  await updateSheetCell(LADDER_SHEET, sheetRow, "H", count);
 }
 
 /** Running count of approved dodges *against* this entry — see the `dodgeCount` doc on LadderRow. */
 export async function setDodgeCount(sheetRow: number, count: number): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "L", count);
+  await updateSheetCell(LADDER_SHEET, sheetRow, "I", count);
 }
 
 export async function overwriteRow(row: LadderRow): Promise<void> {

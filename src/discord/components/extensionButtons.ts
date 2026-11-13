@@ -46,9 +46,7 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
       await matchesRepo.setWarningSentAt(fresh.sheetRow, ""); // let the scheduler re-warn ahead of the new expiry
 
       if (fresh.extensionRequestedByUserId) {
-        const requesterElement =
-          fresh.extensionRequestedByUserId === fresh.challengerUserId ? fresh.challengerElement : fresh.defenderElement;
-        const requesterEntry = await ladderRepo.findEntry(fresh.extensionRequestedByUserId, requesterElement);
+        const requesterEntry = await ladderRepo.findEntry(fresh.extensionRequestedByUserId);
         if (requesterEntry) {
           await pointsService.recordExtensionRequested(requesterEntry.discordUserId, requesterEntry.discordName);
         }

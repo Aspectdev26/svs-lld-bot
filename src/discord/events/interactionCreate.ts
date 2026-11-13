@@ -14,73 +14,55 @@ import {
 } from "../registerPanel.js";
 import {
   handleVacationRequestStartButton,
-  handleVacationRequestElementSelect,
   handleVacationRequestSubmitResolve,
   handleVacationRequestApproveDenyButton,
   handleVacationRequestDenyModal,
   handleExtendedVacationRequestStartButton,
-  handleExtendedVacationRequestElementSelect,
   handleExtendedVacationRequestSubmitResolve,
   handleExtendedVacationRequestApproveDenyButton,
   handleExtendedVacationRequestDenyModal,
   handleVacationReturnStartButton,
-  handleVacationReturnElementSelect,
   handleVacationReturnResolve,
   handleExtendedVacationReturnStartButton,
-  handleExtendedVacationReturnElementSelect,
   handleExtendedVacationReturnResolve,
-  VACATION_REQUEST_ELEMENT_SELECT_ID,
   VACATION_REQUEST_SUBMIT_PREFIX,
   VACATION_REQUEST_SUBMIT_CANCEL_ID,
   VACATION_REQUEST_APPROVE_DENY_PREFIXES,
   VACATION_REQUEST_DENY_MODAL_PREFIX,
-  EXTENDED_VACATION_REQUEST_ELEMENT_SELECT_ID,
   EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX,
   EXTENDED_VACATION_REQUEST_SUBMIT_CANCEL_ID,
   EXTENDED_VACATION_REQUEST_APPROVE_DENY_PREFIXES,
   EXTENDED_VACATION_REQUEST_DENY_MODAL_PREFIX,
-  VACATION_RETURN_ELEMENT_SELECT_ID,
-  VACATION_RETURN_CONFIRM_PREFIX,
+  VACATION_RETURN_CONFIRM_ID,
   VACATION_RETURN_CANCEL_ID,
-  EXTENDED_VACATION_RETURN_ELEMENT_SELECT_ID,
-  EXTENDED_VACATION_RETURN_CONFIRM_PREFIX,
+  EXTENDED_VACATION_RETURN_CONFIRM_ID,
   EXTENDED_VACATION_RETURN_CANCEL_ID,
 } from "../components/vacationFlow.js";
 import {
   handleLeaveLadderStartButton,
-  handleLeaveLadderElementSelect,
   handleLeaveLadderResolve,
-  LEAVE_ELEMENT_SELECT_ID,
-  LEAVE_CONFIRM_PREFIX,
+  LEAVE_CONFIRM_ID,
   LEAVE_CANCEL_ID,
 } from "../components/leaveLadderFlow.js";
 import {
   handleRegisterStartButton,
-  handleElementSelect,
-  handleBuildSelect,
-  handleNameModal,
   handleRegisterApproveDenyButton,
   handleRegisterDenyModal,
   DENY_MODAL_PREFIX as REG_DENY_MODAL_PREFIX,
 } from "../components/registerFlow.js";
 import { CHALLENGE_START_BUTTON_ID } from "../challengePanel.js";
 import { TARGET_SELECT_PREFIX } from "../challengeFlow.js";
-import {
-  handleChallengeStartButton,
-  handleChallengeElementSelect,
-  handleChallengeTargetSelect,
-} from "../components/challengeFlowButtons.js";
+import { handleChallengeStartButton, handleChallengeTargetSelect } from "../components/challengeFlowButtons.js";
 import { ADMIN_BUTTON_IDS } from "../adminPanel.js";
 import { maybeTrollAdminAction } from "../troll.js";
 import { scheduleReplyCleanup } from "../ephemeralCleanup.js";
 import { handleShuffleStart, handleShuffleResolve, handleShuffleNameModal, SEASON_NAME_MODAL_ID } from "../components/admin/adminShuffle.js";
 import {
   handleRemoveStart,
-  handleRemoveCharacterSelect,
+  handleRemovePlayerSelect,
   handleRemoveResolve,
   handleBanStart,
   handleBanUserSelect,
-  handleBanElementSelect,
   handleBanReasonModal,
   BAN_REASON_MODAL_PREFIX,
   handleUnbanStart,
@@ -101,7 +83,6 @@ import {
   handleCancelMatchResolve,
   handleSetRankStart,
   handleSetRankUserSelect,
-  handleSetRankElementSelect,
   handleSetRankModal,
 } from "../components/admin/adminMatchAndRank.js";
 import {
@@ -122,25 +103,19 @@ const MATCH_CHANNEL_BUTTON_PREFIXES = [
 const EXTENSION_BUTTON_PREFIXES = ["extend_approve:", "extend_deny:"];
 const DODGE_BUTTON_PREFIXES = ["dodge_approve:", "dodge_deny:"];
 const REGISTER_APPROVE_DENY_PREFIXES = ["reg_approve:", "reg_deny:"];
-const REG_BUILD_SELECT_PREFIX = "reg_build_select:";
-const REG_NAME_MODAL_PREFIX = "reg_name_modal:";
-const CHAL_ELEMENT_SELECT_ID = "chal_element_select";
-const CHAL_TARGET_SELECT_PREFIX = `${TARGET_SELECT_PREFIX}:`;
 
 const ADMIN_BUTTON_ID_VALUES: string[] = Object.values(ADMIN_BUTTON_IDS);
 const ADMIN_SHUFFLE_RESOLVE_IDS = ["admin_shuffle_confirm", "admin_shuffle_cancel"];
 const ADMIN_REMOVE_RESOLVE_PREFIXES = ["admin_remove_confirm:", "admin_remove_cancel"];
 const ADMIN_CANCEL_RESOLVE_PREFIXES = ["admin_cancel_confirm:", "admin_cancel_cancel"];
-const ADMIN_REMOVE_CHARACTER_SELECT_ID = "admin_remove_character";
-const ADMIN_BAN_ELEMENT_SELECT_PREFIX = "admin_ban_element:";
-const ADMIN_SETRANK_ELEMENT_SELECT_PREFIX = "admin_setrank_element:";
+const ADMIN_REMOVE_PLAYER_SELECT_ID = "admin_remove_player";
 const ADMIN_SETRANK_MODAL_PREFIX = "admin_setrank_modal:";
 const WINNER_SELECT_PREFIX_WITH_COLON = `${WINNER_SELECT_PREFIX}:`;
-const LEAVE_RESOLVE_PREFIXES = [`${LEAVE_CONFIRM_PREFIX}:`, LEAVE_CANCEL_ID];
-const VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON = `${VACATION_REQUEST_SUBMIT_PREFIX}:`;
-const EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON = `${EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX}:`;
-const VACATION_RETURN_RESOLVE_PREFIXES = [`${VACATION_RETURN_CONFIRM_PREFIX}:`, VACATION_RETURN_CANCEL_ID];
-const EXTENDED_VACATION_RETURN_RESOLVE_PREFIXES = [`${EXTENDED_VACATION_RETURN_CONFIRM_PREFIX}:`, EXTENDED_VACATION_RETURN_CANCEL_ID];
+const LEAVE_RESOLVE_IDS = [LEAVE_CONFIRM_ID, LEAVE_CANCEL_ID];
+const VACATION_REQUEST_SUBMIT_IDS = [VACATION_REQUEST_SUBMIT_PREFIX, VACATION_REQUEST_SUBMIT_CANCEL_ID];
+const EXTENDED_VACATION_REQUEST_SUBMIT_IDS = [EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX, EXTENDED_VACATION_REQUEST_SUBMIT_CANCEL_ID];
+const VACATION_RETURN_RESOLVE_IDS = [VACATION_RETURN_CONFIRM_ID, VACATION_RETURN_CANCEL_ID];
+const EXTENDED_VACATION_RETURN_RESOLVE_IDS = [EXTENDED_VACATION_RETURN_CONFIRM_ID, EXTENDED_VACATION_RETURN_CANCEL_ID];
 const VACATION_REQUEST_DENY_MODAL_PREFIX_WITH_COLON = `${VACATION_REQUEST_DENY_MODAL_PREFIX}:`;
 const EXTENDED_VACATION_REQUEST_DENY_MODAL_PREFIX_WITH_COLON = `${EXTENDED_VACATION_REQUEST_DENY_MODAL_PREFIX}:`;
 
@@ -171,40 +146,20 @@ export function registerInteractionEvent(client: Client): void {
       }
 
       if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === "reg_element_select") {
-          await handleElementSelect(interaction);
-        } else if (interaction.customId.startsWith(REG_BUILD_SELECT_PREFIX)) {
-          await handleBuildSelect(interaction);
-        } else if (interaction.customId === CHAL_ELEMENT_SELECT_ID) {
-          await handleChallengeElementSelect(interaction);
-        } else if (interaction.customId.startsWith(CHAL_TARGET_SELECT_PREFIX)) {
+        if (interaction.customId === TARGET_SELECT_PREFIX) {
           await handleChallengeTargetSelect(interaction);
-        } else if (interaction.customId === ADMIN_REMOVE_CHARACTER_SELECT_ID) {
-          await handleRemoveCharacterSelect(interaction);
-        } else if (interaction.customId.startsWith(ADMIN_BAN_ELEMENT_SELECT_PREFIX)) {
-          await handleBanElementSelect(interaction);
+        } else if (interaction.customId === ADMIN_REMOVE_PLAYER_SELECT_ID) {
+          await handleRemovePlayerSelect(interaction);
         } else if (interaction.customId === "admin_unban_select") {
           await handleUnbanSelect(interaction);
         } else if (interaction.customId === "admin_cancel_select") {
           await handleCancelMatchSelect(interaction);
-        } else if (interaction.customId.startsWith(ADMIN_SETRANK_ELEMENT_SELECT_PREFIX)) {
-          await handleSetRankElementSelect(interaction);
         } else if (interaction.customId === PENDING_SIGNUPS_SELECT_ID) {
           await handlePendingSignupSelect(interaction);
         } else if (interaction.customId === VACATION_SELECT_ID) {
           await handleVacationSelect(interaction);
         } else if (interaction.customId.startsWith(WINNER_SELECT_PREFIX_WITH_COLON)) {
           await handleWinnerSelect(interaction);
-        } else if (interaction.customId === LEAVE_ELEMENT_SELECT_ID) {
-          await handleLeaveLadderElementSelect(interaction);
-        } else if (interaction.customId === VACATION_REQUEST_ELEMENT_SELECT_ID) {
-          await handleVacationRequestElementSelect(interaction);
-        } else if (interaction.customId === EXTENDED_VACATION_REQUEST_ELEMENT_SELECT_ID) {
-          await handleExtendedVacationRequestElementSelect(interaction);
-        } else if (interaction.customId === VACATION_RETURN_ELEMENT_SELECT_ID) {
-          await handleVacationReturnElementSelect(interaction);
-        } else if (interaction.customId === EXTENDED_VACATION_RETURN_ELEMENT_SELECT_ID) {
-          await handleExtendedVacationReturnElementSelect(interaction);
         }
         return;
       }
@@ -214,7 +169,7 @@ export function registerInteractionEvent(client: Client): void {
           await handleRegisterStartButton(interaction);
         } else if (interaction.customId === LEAVE_LADDER_BUTTON_ID) {
           await handleLeaveLadderStartButton(interaction);
-        } else if (LEAVE_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+        } else if (LEAVE_RESOLVE_IDS.includes(interaction.customId)) {
           await handleLeaveLadderResolve(interaction);
         } else if (interaction.customId === VACATION_REQUEST_START_BUTTON_ID) {
           await handleVacationRequestStartButton(interaction);
@@ -224,19 +179,13 @@ export function registerInteractionEvent(client: Client): void {
           await handleExtendedVacationRequestStartButton(interaction);
         } else if (interaction.customId === EXTENDED_VACATION_RETURN_BUTTON_ID) {
           await handleExtendedVacationReturnStartButton(interaction);
-        } else if (
-          interaction.customId === VACATION_REQUEST_SUBMIT_CANCEL_ID ||
-          interaction.customId.startsWith(VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON)
-        ) {
+        } else if (VACATION_REQUEST_SUBMIT_IDS.includes(interaction.customId)) {
           await handleVacationRequestSubmitResolve(interaction);
-        } else if (
-          interaction.customId === EXTENDED_VACATION_REQUEST_SUBMIT_CANCEL_ID ||
-          interaction.customId.startsWith(EXTENDED_VACATION_REQUEST_SUBMIT_PREFIX_WITH_COLON)
-        ) {
+        } else if (EXTENDED_VACATION_REQUEST_SUBMIT_IDS.includes(interaction.customId)) {
           await handleExtendedVacationRequestSubmitResolve(interaction);
-        } else if (VACATION_RETURN_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+        } else if (VACATION_RETURN_RESOLVE_IDS.includes(interaction.customId)) {
           await handleVacationReturnResolve(interaction);
-        } else if (EXTENDED_VACATION_RETURN_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
+        } else if (EXTENDED_VACATION_RETURN_RESOLVE_IDS.includes(interaction.customId)) {
           await handleExtendedVacationReturnResolve(interaction);
         } else if (VACATION_REQUEST_APPROVE_DENY_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
           await handleVacationRequestApproveDenyButton(interaction);
@@ -293,9 +242,7 @@ export function registerInteractionEvent(client: Client): void {
       }
 
       if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith(REG_NAME_MODAL_PREFIX)) {
-          await handleNameModal(interaction);
-        } else if (interaction.customId.startsWith(`${REG_DENY_MODAL_PREFIX}:`)) {
+        if (interaction.customId.startsWith(`${REG_DENY_MODAL_PREFIX}:`)) {
           await handleRegisterDenyModal(interaction);
         } else if (interaction.customId.startsWith(`${DENY_MODAL_PREFIX}:`)) {
           await handleDodgeDenyModal(interaction);

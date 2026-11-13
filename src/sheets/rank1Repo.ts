@@ -1,20 +1,14 @@
 import { appendSheetRow, readSheetRange, updateSheetRow } from "./sheetsClient.js";
-import type { Build, Element, LadderRow, Rank1Row } from "../types.js";
+import type { LadderRow, Rank1Row } from "../types.js";
 
 export const RANK1_SHEET = "All Time Stats";
 /**
- * CurrentHolder, Wins, and Losses are all appended last (never inserted mid-row) so this stays a
- * backward-compatible migration: existing data for already-tracked rows is untouched, and new
- * columns just read blank/zero until the next write touches that row again. This tab has grown
- * from "rank-1 defends only" into the permanent all-time stat sheet for every character — Wins and
- * Losses count every resolved match (any rank), while Defends stays scoped to title defenses.
+ * The permanent all-time stat sheet for every player — Wins and Losses count every resolved match
+ * (any rank), while Defends stays scoped to title defenses.
  */
 export const RANK1_HEADERS = [
   "DiscordUserID",
   "DiscordName",
-  "CharacterName",
-  "Element",
-  "Build",
   "Defends",
   "HolderSince",
   "CurrentHolder",
@@ -27,9 +21,6 @@ function toValues(row: Omit<Rank1Row, "sheetRow">): (string | number)[] {
   return [
     row.discordUserId,
     row.discordName,
-    row.characterName,
-    row.element,
-    row.build,
     row.defends,
     row.holderSince,
     row.currentHolder ? "Yes" : "",
@@ -40,15 +31,11 @@ function toValues(row: Omit<Rank1Row, "sheetRow">): (string | number)[] {
 }
 
 function rowFromValues(sheetRow: number, values: string[]): Rank1Row {
-  const [discordUserId, discordName, characterName, element, build, defends, holderSince, currentHolder, wins, losses, dodgesAgainst] =
-    values;
+  const [discordUserId, discordName, defends, holderSince, currentHolder, wins, losses, dodgesAgainst] = values;
   return {
     sheetRow,
     discordUserId: discordUserId ?? "",
     discordName: discordName ?? "",
-    characterName: characterName ?? "",
-    element: element as Element,
-    build: build as Build,
     defends: Number.parseInt(defends, 10) || 0,
     holderSince: holderSince ?? "",
     currentHolder: (currentHolder ?? "").trim().toLowerCase() === "yes",
@@ -58,9 +45,9 @@ function rowFromValues(sheetRow: number, values: string[]): Rank1Row {
   };
 }
 
-/** Every player (per element) who has ever held rank 1 or recorded a win/loss — the tab is a permanent, append-only history. */
+/** Every player who has ever held rank 1 or recorded a win/loss — the tab is a permanent, append-only history. */
 export async function getAllRows(): Promise<Rank1Row[]> {
-  const values = await readSheetRange(`${RANK1_SHEET}!A2:K`);
+  const values = await readSheetRange(`${RANK1_SHEET}!A2:H`);
   return values
     .map((row, i) => (row.length > 0 && row[0] ? rowFromValues(i + 2, row) : null))
     .filter((r): r is Rank1Row => r !== null);
@@ -70,10 +57,10 @@ export async function getCurrentHolderRow(): Promise<Rank1Row | undefined> {
   return (await getAllRows()).find((r) => r.currentHolder);
 }
 
-/** Un-flags CurrentHolder on every row except (discordUserId, element) — their defend total is left untouched. */
-async function clearOtherCurrentHolders(rows: Rank1Row[], discordUserId: string, element: Element): Promise<void> {
+/** Un-flags CurrentHolder on every row except discordUserId's — their defend total is left untouched. */
+async function clearOtherCurrentHolders(rows: Rank1Row[], discordUserId: string): Promise<void> {
   for (const row of rows) {
-    if (row.currentHolder && !(row.discordUserId === discordUserId && row.element === element)) {
+    if (row.currentHolder && row.discordUserId !== discordUserId) {
       await updateSheetRow(RANK1_SHEET, row.sheetRow, toValues({ ...row, currentHolder: false }));
     }
   }
@@ -87,14 +74,14 @@ async function clearOtherCurrentHolders(rows: Rank1Row[], discordUserId: string,
  */
 export async function crownHolder(entry: LadderRow, holderSince = new Date().toISOString()): Promise<void> {
   const rows = await getAllRows();
-  await clearOtherCurrentHolders(rows, entry.discordUserId, entry.element);
+  await clearOtherCurrentHolders(rows, entry.discordUserId);
 
-  const existing = rows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
+  const existing = rows.find((r) => r.discordUserId === entry.discordUserId);
   if (existing) {
     await updateSheetRow(
       RANK1_SHEET,
       existing.sheetRow,
-      toValues({ ...existing, discordName: entry.discordName, characterName: entry.characterName, build: entry.build, currentHolder: true, holderSince }),
+      toValues({ ...existing, discordName: entry.discordName, currentHolder: true, holderSince }),
     );
     return;
   }
@@ -104,9 +91,6 @@ export async function crownHolder(entry: LadderRow, holderSince = new Date().toI
     toValues({
       discordUserId: entry.discordUserId,
       discordName: entry.discordName,
-      characterName: entry.characterName,
-      element: entry.element,
-      build: entry.build,
       defends: 0,
       holderSince,
       currentHolder: true,
@@ -120,9 +104,9 @@ export async function crownHolder(entry: LadderRow, holderSince = new Date().toI
 /** Records a successful title defense for `entry`, bumping their all-time defend total. Returns the new total. */
 export async function recordDefend(entry: LadderRow): Promise<number> {
   const rows = await getAllRows();
-  await clearOtherCurrentHolders(rows, entry.discordUserId, entry.element);
+  await clearOtherCurrentHolders(rows, entry.discordUserId);
 
-  const existing = rows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
+  const existing = rows.find((r) => r.discordUserId === entry.discordUserId);
   const defends = (existing?.defends ?? 0) + 1;
   if (existing) {
     await updateSheetRow(RANK1_SHEET, existing.sheetRow, toValues({ ...existing, currentHolder: true, defends }));
@@ -132,9 +116,6 @@ export async function recordDefend(entry: LadderRow): Promise<number> {
       toValues({
         discordUserId: entry.discordUserId,
         discordName: entry.discordName,
-        characterName: entry.characterName,
-        element: entry.element,
-        build: entry.build,
         defends,
         holderSince: new Date().toISOString(),
         currentHolder: true,
@@ -156,7 +137,7 @@ export async function recordDefend(entry: LadderRow): Promise<number> {
  */
 async function upsertStat(entry: LadderRow, field: "wins" | "losses" | "dodgesAgainst", rows?: Rank1Row[]): Promise<number> {
   const allRows = rows ?? (await getAllRows());
-  const existing = allRows.find((r) => r.discordUserId === entry.discordUserId && r.element === entry.element);
+  const existing = allRows.find((r) => r.discordUserId === entry.discordUserId);
   const newValue = (existing?.[field] ?? 0) + 1;
 
   if (existing) {
@@ -167,9 +148,6 @@ async function upsertStat(entry: LadderRow, field: "wins" | "losses" | "dodgesAg
       toValues({
         discordUserId: entry.discordUserId,
         discordName: entry.discordName,
-        characterName: entry.characterName,
-        element: entry.element,
-        build: entry.build,
         defends: 0,
         holderSince: "",
         currentHolder: false,

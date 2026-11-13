@@ -8,7 +8,6 @@ import { notify } from "./notify.js";
 import { refreshActiveChallengesPanel } from "./activeChallengesPanel.js";
 import { scheduleReplyCleanup, scheduleMessageCleanup } from "./ephemeralCleanup.js";
 import { maybeTrollChallenge } from "./troll.js";
-import { formatElement } from "../util/formatElement.js";
 import type { LadderRow } from "../types.js";
 
 export const TARGET_SELECT_PREFIX = "chal_target_select";
@@ -17,7 +16,7 @@ export type TargetSelectResult =
   | { ok: true; row: ActionRowBuilder<StringSelectMenuBuilder> }
   | { ok: false; reason: string };
 
-/** Builds the "who do you want to challenge" select menu for one of the player's elements. */
+/** Builds the "who do you want to challenge" select menu for the challenger. */
 export function buildTargetSelectRow(ladder: LadderRow[], challengerEntry: LadderRow): TargetSelectResult {
   const eligible = getEligibleTargets(ladder, challengerEntry, config.rules).filter((e) =>
     isTargetReachable(e, config.rules),
@@ -25,16 +24,16 @@ export function buildTargetSelectRow(ladder: LadderRow[], challengerEntry: Ladde
   if (eligible.length === 0) {
     return {
       ok: false,
-      reason: `There's no one you can currently challenge with your **${formatElement(challengerEntry.element)}** entry (rank ${challengerEntry.rank}).`,
+      reason: `There's no one you can currently challenge from rank ${challengerEntry.rank}.`,
     };
   }
 
   const select = new StringSelectMenuBuilder()
-    .setCustomId(`${TARGET_SELECT_PREFIX}:${challengerEntry.element}`)
+    .setCustomId(TARGET_SELECT_PREFIX)
     .setPlaceholder("Choose your target")
     .addOptions(
       eligible.map((e) => ({
-        label: `Rank ${e.row.rank} — ${e.row.characterName} (${formatElement(e.row.element)})`,
+        label: `Rank ${e.row.rank} — ${e.row.discordName}`.slice(0, 100),
         value: String(e.row.sheetRow),
       })),
     );
@@ -74,22 +73,17 @@ export async function attemptChallenge(
   }
 
   const [challengerPending, defenderPending, cooldownExpiresAt] = await Promise.all([
-    matchService.entryHasPendingMatch(challengerEntry.discordUserId, challengerEntry.element),
-    matchService.entryHasPendingMatch(defenderEntry.discordUserId, defenderEntry.element),
-    matchService.getChallengeCooldownExpiry(
-      challengerEntry.discordUserId,
-      challengerEntry.element,
-      defenderEntry.discordUserId,
-      defenderEntry.element,
-    ),
+    matchService.playerHasPendingMatch(challengerEntry.discordUserId),
+    matchService.playerHasPendingMatch(defenderEntry.discordUserId),
+    matchService.getChallengeCooldownExpiry(challengerEntry.discordUserId, defenderEntry.discordUserId),
   ]);
 
   const rejection = checkChallenge({
     ladder,
     challenger: challengerEntry,
     defender: defenderEntry,
-    challengerEntryHasPendingMatch: challengerPending,
-    defenderEntryHasPendingMatch: defenderPending,
+    challengerHasPendingMatch: challengerPending,
+    defenderHasPendingMatch: defenderPending,
     cooldownExpiresAt,
     rules: config.rules,
   });
@@ -115,7 +109,7 @@ export async function attemptChallenge(
   }
 
   const sent = await respond({
-    content: `Challenge issued against **${defenderEntry.characterName}** (${formatElement(defenderEntry.element)})! Match ID \`${match.matchId}\`.${channelMention}`,
+    content: `Challenge issued against **${defenderEntry.discordName}**! Match ID \`${match.matchId}\`.${channelMention}`,
     ephemeral: true,
   });
   scheduleReplyCleanup(interaction);
@@ -124,7 +118,7 @@ export async function attemptChallenge(
   const embed = new EmbedBuilder()
     .setTitle("New challenge")
     .setDescription(
-      `⚔️ <@${challengerEntry.discordUserId}> (**${formatElement(challengerEntry.element)}**, rank ${challengerEntry.rank}) has challenged <@${defenderEntry.discordUserId}> (**${formatElement(defenderEntry.element)}**, rank ${defenderEntry.rank})!\n\n` +
+      `⚔️ <@${challengerEntry.discordUserId}> (rank ${challengerEntry.rank}) has challenged <@${defenderEntry.discordUserId}> (rank ${defenderEntry.rank})!\n\n` +
         // Static (:F) only — this post is a permanent log entry that's never edited or removed
         // once the match resolves, so a live-ticking (:R) countdown would keep counting up into a
         // misleading "expired 3 weeks ago" long after the match is done.

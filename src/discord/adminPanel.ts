@@ -24,14 +24,14 @@ function buildPanelContent() {
         "name for the new season that's starting — its defends/wins/losses track live in a tab titled with that " +
         "name from here on. The season that just ended keeps the tab it was already using, untouched. All-time " +
         "stats are unaffected. Requires confirmation.\n" +
-        "**Remove Player** — pick one character (by name) to take off the ladder.\n" +
+        "**Remove Player** — pick one player to take off the ladder.\n" +
         "**Ban Player** — removes them and blocks future sign-ups for the chosen scope, with a reason.\n" +
         "**Unban** — reverses an existing ban.\n" +
         "**Force-Cancel Match** — voids an active match with no rank change (for disputes/mistakes).\n" +
         "**Set Rank** — manually moves a player to an exact rank, shifting others out of the way.\n" +
         "**Pending Sign-ups** — view and approve/deny any sign-up request, even if its original post in this " +
         "channel never showed up.\n" +
-        "**Vacation** — pick one character (by name) to toggle Vacation/Available.\n" +
+        "**Vacation** — pick one player to toggle Vacation/Available.\n" +
         "**Shuffle Ranks** — just randomizes everyone's rank order, no season archiving or match cancellation. " +
         "Warns you first if there are active challenges. Requires confirmation.\n" +
         "**Pause/Resume Ladder** — pausing blocks new challenges from being issued and freezes the timers on " +

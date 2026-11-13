@@ -5,21 +5,20 @@ import * as extendedVacationRepo from "../sheets/extendedVacationRepo.js";
 import * as matchService from "./matchService.js";
 import { removePlayer, setManualRank } from "./adminService.js";
 import { nextRankForNewEntry } from "./rankingService.js";
-import { formatElement } from "../util/formatElement.js";
 import type { ExtendedVacationRow, ExtendedVacationSource, LadderRow, MatchRow, VacationRequestRow, VacationRequestType } from "../types.js";
 
 export type CreateVacationRequestResult = { ok: true; request: VacationRequestRow } | { ok: false; reason: string };
 
 async function createRequest(entry: LadderRow, requestType: VacationRequestType): Promise<CreateVacationRequestResult> {
   if (requestType === "Vacation" && entry.status === "Vacation") {
-    return { ok: false, reason: `Your **${formatElement(entry.element)}** entry is already on Vacation.` };
+    return { ok: false, reason: "You're already on Vacation." };
   }
 
-  const pending = await vacationRequestsRepo.getPendingRequestForUserElement(entry.discordUserId, entry.element);
+  const pending = await vacationRequestsRepo.getPendingRequestForUser(entry.discordUserId);
   if (pending) {
     return {
       ok: false,
-      reason: `You already have a pending **${pending.requestType === "Vacation" ? "Vacation" : "Extended Vacation"}** request for **${formatElement(entry.element)}** awaiting review.`,
+      reason: `You already have a pending **${pending.requestType === "Vacation" ? "Vacation" : "Extended Vacation"}** request awaiting review.`,
     };
   }
 
@@ -27,9 +26,6 @@ async function createRequest(entry: LadderRow, requestType: VacationRequestType)
     requestId: matchService.genId(),
     discordUserId: entry.discordUserId,
     discordName: entry.discordName,
-    characterName: entry.characterName,
-    element: entry.element,
-    build: entry.build,
     requestType,
     status: "Pending",
     requestedAt: new Date().toISOString(),
@@ -80,16 +76,13 @@ export async function returnFromVacation(entry: LadderRow): Promise<void> {
 
 /** Removes `entry` from the ladder and logs it to the Extended Vacation ledger with a fresh 30-day clock. */
 async function enterExtendedVacation(entry: LadderRow, source: ExtendedVacationSource, approvedByUserId: string): Promise<void> {
-  await removePlayer(entry.discordUserId, entry.element);
+  await removePlayer(entry.discordUserId);
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + config.timing.extendedVacationExpiryMs);
   await extendedVacationRepo.addEntry({
     discordUserId: entry.discordUserId,
     discordName: entry.discordName,
-    characterName: entry.characterName,
-    element: entry.element,
-    build: entry.build,
     rankAtEntry: entry.rank,
     enteredAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
@@ -135,9 +128,6 @@ export async function returnFromExtendedVacation(evacRow: ExtendedVacationRow): 
 
   const newEntryData: Omit<LadderRow, "sheetRow"> = {
     rank: bottomRank,
-    characterName: evacRow.characterName,
-    build: evacRow.build,
-    element: evacRow.element,
     discordName: evacRow.discordName,
     discordUserId: evacRow.discordUserId,
     status: "Available",
@@ -152,26 +142,26 @@ export async function returnFromExtendedVacation(evacRow: ExtendedVacationRow): 
   };
   await ladderRepo.addLadderEntry(newEntryData);
 
-  const added = await ladderRepo.findEntry(evacRow.discordUserId, evacRow.element);
+  const added = await ladderRepo.findEntry(evacRow.discordUserId);
   if (!added) {
-    throw new Error(`Failed to re-add ladder entry for ${evacRow.discordUserId} (${evacRow.element}) returning from Extended Vacation`);
+    throw new Error(`Failed to re-add ladder entry for ${evacRow.discordUserId} returning from Extended Vacation`);
   }
 
   await setManualRank(added.sheetRow, evacRow.rankAtEntry + 1);
   await extendedVacationRepo.removeEntry(evacRow.sheetRow);
 
   // setManualRank re-sorts the Ladder tab, so `added.sheetRow` now points at whoever sorted into
-  // the bottom row — re-find the returner by owner + element instead.
+  // the bottom row — re-find the returner by owner instead.
   const updatedLadder = await ladderRepo.getLadder();
   const finalEntry =
-    updatedLadder.find((r) => r.discordUserId === evacRow.discordUserId && r.element === evacRow.element) ?? added;
+    updatedLadder.find((r) => r.discordUserId === evacRow.discordUserId) ?? added;
 
   const oldRankHolder = updatedLadder.find((r) => r.rank === evacRow.rankAtEntry && r.sheetRow !== finalEntry.sheetRow);
   if (!oldRankHolder) {
     return { entry: finalEntry };
   }
 
-  const opponentHasPending = await matchService.entryHasPendingMatch(oldRankHolder.discordUserId, oldRankHolder.element);
+  const opponentHasPending = await matchService.playerHasPendingMatch(oldRankHolder.discordUserId);
   if (opponentHasPending) {
     return { entry: finalEntry };
   }

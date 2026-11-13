@@ -42,9 +42,6 @@ function ladderRow(overrides: Partial<LadderRow> = {}): LadderRow {
   return {
     sheetRow: 2,
     rank: 3,
-    element: "Cold",
-    build: "Vita",
-    characterName: "Frosty",
     discordName: "user#1",
     discordUserId: "u1",
     status: "Available",
@@ -63,10 +60,8 @@ function matchRow(overrides: Partial<MatchRow> = {}): MatchRow {
     sheetRow: 2,
     matchId: "m1",
     challengerUserId: "u1",
-    challengerElement: "Cold",
     challengerRank: 3,
     defenderUserId: "u2",
-    defenderElement: "Cold",
     defenderRank: 1,
     status: "Pending",
     createdAt: "2026-01-01T00:00:00.000Z",
@@ -221,7 +216,7 @@ describe("applyDodgeWin", () => {
 describe("getChallengeCooldownExpiry", () => {
   it("returns null when this challenger entry never lost to this defender entry", async () => {
     vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([]);
-    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    const expiry = await getChallengeCooldownExpiry("u1", "u2");
     expect(expiry).toBeNull();
   });
 
@@ -230,30 +225,26 @@ describe("getChallengeCooldownExpiry", () => {
       matchRow({
         status: "Reported",
         challengerUserId: "u1",
-        challengerElement: "Cold",
         defenderUserId: "u2",
-        defenderElement: "Cold",
         winnerUserId: "u2",
         resolvedAt: new Date(Date.now() - 1000 * 24 * 60 * 60 * 1000).toISOString(),
       }),
     ]);
-    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    const expiry = await getChallengeCooldownExpiry("u1", "u2");
     expect(expiry).toBeNull();
   });
 
-  it("returns a future expiry for a very recent loss to that exact defender entry", async () => {
+  it("returns a future expiry for a very recent loss to that exact defender", async () => {
     vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
       matchRow({
         status: "Reported",
         challengerUserId: "u1",
-        challengerElement: "Cold",
         defenderUserId: "u2",
-        defenderElement: "Cold",
         winnerUserId: "u2",
         resolvedAt: new Date().toISOString(),
       }),
     ]);
-    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    const expiry = await getChallengeCooldownExpiry("u1", "u2");
     expect(expiry).not.toBeNull();
     expect(expiry!.getTime()).toBeGreaterThan(Date.now());
   });
@@ -263,30 +254,12 @@ describe("getChallengeCooldownExpiry", () => {
       matchRow({
         status: "Reported",
         challengerUserId: "u1",
-        challengerElement: "Cold",
         defenderUserId: "u2",
-        defenderElement: "Cold",
         winnerUserId: "u1",
         resolvedAt: new Date().toISOString(),
       }),
     ]);
-    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
-    expect(expiry).toBeNull();
-  });
-
-  it("ignores a loss to a different element-entry of the same defender", async () => {
-    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
-      matchRow({
-        status: "Reported",
-        challengerUserId: "u1",
-        challengerElement: "Cold",
-        defenderUserId: "u2",
-        defenderElement: "Fire",
-        winnerUserId: "u2",
-        resolvedAt: new Date().toISOString(),
-      }),
-    ]);
-    const expiry = await getChallengeCooldownExpiry("u1", "Cold", "u2", "Cold");
+    const expiry = await getChallengeCooldownExpiry("u1", "u2");
     expect(expiry).toBeNull();
   });
 });

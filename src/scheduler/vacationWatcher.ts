@@ -7,7 +7,6 @@ import * as pointsStore from "../domain/pointsStore.js";
 import { isLadderPaused } from "../domain/ladderPauseService.js";
 import { notify } from "../discord/notify.js";
 import { refreshTop10Panel } from "../discord/top10Panel.js";
-import { formatElement } from "../util/formatElement.js";
 
 let running = false;
 
@@ -32,7 +31,6 @@ async function checkVacations(client: Client): Promise<boolean> {
     const expiresAtMs = sinceMs + config.timing.vacationExpiryMs;
 
     if (now >= expiresAtMs) {
-      const elementLabel = formatElement(entry.element);
       const rankAtEntry = entry.rank;
       await vacationService.autoEscalateToExtendedVacation(entry);
       ladderChanged = true;
@@ -40,12 +38,12 @@ async function checkVacations(client: Client): Promise<boolean> {
       await dmUser(
         client,
         entry.discordUserId,
-        `Your **${elementLabel}** entry's Vacation expired without a return, so it's been moved to **Extended Vacation** (was rank ${rankAtEntry}). ` +
-          `You have 30 days to return before it's fully removed from the ladder.`,
+        `Your Vacation expired without a return, so you've been moved to **Extended Vacation** (was rank ${rankAtEntry}). ` +
+          `You have 30 days to return before you're fully removed from the ladder.`,
       );
       const embed = new EmbedBuilder()
         .setDescription(
-          `⌛ <@${entry.discordUserId}>'s **${entry.characterName}** (${elementLabel}) didn't return from Vacation in time and was auto-moved to **Extended Vacation** (was rank ${rankAtEntry}).`,
+          `⌛ <@${entry.discordUserId}> didn't return from Vacation in time and was auto-moved to **Extended Vacation** (was rank ${rankAtEntry}).`,
         )
         .setColor(0x992d22);
       await notify.leagueManagers(client, { embeds: [embed] });
@@ -58,12 +56,12 @@ async function checkVacations(client: Client): Promise<boolean> {
       await dmUser(
         client,
         entry.discordUserId,
-        `⚠️ Your **${formatElement(entry.element)}** entry (**${entry.characterName}**) has **3 days left** on Vacation. ` +
+        `⚠️ You have **3 days left** on Vacation. ` +
           `If you don't return in time, you'll be automatically moved to Extended Vacation.`,
       );
       const embed = new EmbedBuilder()
         .setDescription(
-          `⚠️ Vacation expiry warning sent to <@${entry.discordUserId}>'s **${entry.characterName}** (${formatElement(entry.element)}) — ` +
+          `⚠️ Vacation expiry warning sent to <@${entry.discordUserId}> — ` +
             `3 days left before auto-escalation to Extended Vacation.`,
         )
         .setColor(0xf39c12);
@@ -90,12 +88,12 @@ async function checkExtendedVacations(client: Client): Promise<void> {
       await dmUser(
         client,
         evacRow.discordUserId,
-        `Your **${formatElement(evacRow.element)}** entry's Extended Vacation expired without a return, so it's been fully removed from the ladder ` +
+        `Your Extended Vacation expired without a return, so you've been fully removed from the ladder ` +
           `and your season points were reset to zero. Sign up again in #register if you'd like to rejoin.`,
       );
       const embed = new EmbedBuilder()
         .setDescription(
-          `🚫 <@${evacRow.discordUserId}>'s **${evacRow.characterName}** (${formatElement(evacRow.element)}) didn't return from Extended Vacation in time and has been fully removed.`,
+          `🚫 <@${evacRow.discordUserId}> didn't return from Extended Vacation in time and has been fully removed.`,
         )
         .setColor(0x992d22);
       await notify.leagueManagers(client, { embeds: [embed] });
@@ -108,12 +106,12 @@ async function checkExtendedVacations(client: Client): Promise<void> {
       await dmUser(
         client,
         evacRow.discordUserId,
-        `⚠️ Your **${formatElement(evacRow.element)}** entry (**${evacRow.characterName}**) has **3 days left** on Extended Vacation. ` +
+        `⚠️ You have **3 days left** on Extended Vacation. ` +
           `If you don't return in time, you'll be fully removed from the ladder and your season points reset to zero.`,
       );
       const embed = new EmbedBuilder()
         .setDescription(
-          `⚠️ Extended Vacation expiry warning sent to <@${evacRow.discordUserId}>'s **${evacRow.characterName}** (${formatElement(evacRow.element)}) — ` +
+          `⚠️ Extended Vacation expiry warning sent to <@${evacRow.discordUserId}> — ` +
             `3 days left before full removal.`,
         )
         .setColor(0xf39c12);

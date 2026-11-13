@@ -13,27 +13,18 @@ import {
 
 const COL = {
   rank: 0,
-  name: 1,
-  spec: 2,
-  element: 3,
-  discUser: 4,
-  status: 5,
-  cDate: 6,
-  oppNum: 7,
-  discordUserId: 8,
-  notes: 9,
-  dodges: 10,
-  dodgesAgainst: 11,
+  discUser: 1,
+  status: 2,
+  cDate: 3,
+  oppNum: 4,
+  discordUserId: 5,
+  notes: 6,
+  dodges: 7,
+  dodgesAgainst: 8,
 } as const;
-const COLUMN_COUNT = 12;
+const COLUMN_COUNT = 9;
 
 const BODY_BG: Color = { red: 0.812, green: 0.886, blue: 0.953 }; // #cfe2f3
-
-const ELEMENT_COLORS: Record<string, Color> = {
-  Cold: { red: 0.643, green: 0.761, blue: 0.957 }, // #a4c2f4
-  Fire: { red: 0.918, green: 0.6, blue: 0.6 }, // #ea9999
-  Light: { red: 1, green: 0.898, blue: 0.6 }, // #ffe599
-};
 
 const STATUS_COLORS: Record<string, { bg: Color; text: Color }> = {
   Available: { bg: { red: 0.714, green: 0.843, blue: 0.659 }, text: { red: 0.153, green: 0.306, blue: 0.075 } }, // #b6d7a8 / #274e13
@@ -52,10 +43,7 @@ const DISCUSER_TEXT: Color = { red: 0.067, green: 0.333, blue: 0.8 }; // #1155cc
 
 const COLUMN_WIDTHS: Partial<Record<keyof typeof COL, number>> = {
   rank: 70,
-  name: 140,
-  spec: 60,
-  element: 90,
-  discUser: 120,
+  discUser: 160,
   status: 110,
   cDate: 130,
   oppNum: 60,
@@ -102,7 +90,7 @@ function conditionalNumberEq(sheetId: number, col: number, value: number, bg: Co
 
 /**
  * Applies the reference-sheet look (shared header/border/font styling, plus Ladder-specific body
- * color, column widths, and conditional coloring for Rank/element/Status) to the Ladder tab. Safe
+ * color, column widths, and conditional coloring for Rank/Status) to the Ladder tab. Safe
  * to re-run any time — cell-level styling requests just overwrite in place, and any existing
  * conditional format rules are deleted and recreated fresh each time rather than skipped or
  * duplicated, so a sheet that's drifted (wrong colors, manually cleared formatting, a reset, etc.)
@@ -179,20 +167,11 @@ export async function applyLadderFormatting(): Promise<void> {
     },
   });
 
-  // Name column: bold.
-  requests.push({
-    repeatCell: {
-      range: gridRange(sheetId, COL.name, COL.name + 1, 1),
-      cell: { userEnteredFormat: { textFormat: textFormat(BLACK, true) } },
-      fields: "userEnteredFormat.textFormat",
-    },
-  });
-
-  // discUser column: link-blue text.
+  // discUser column: bold link-blue text — it's the player's identity on the ladder.
   requests.push({
     repeatCell: {
       range: gridRange(sheetId, COL.discUser, COL.discUser + 1, 1),
-      cell: { userEnteredFormat: { textFormat: textFormat(DISCUSER_TEXT, false) } },
+      cell: { userEnteredFormat: { textFormat: textFormat(DISCUSER_TEXT, true) } },
       fields: "userEnteredFormat.textFormat",
     },
   });
@@ -207,9 +186,6 @@ export async function applyLadderFormatting(): Promise<void> {
   });
 
   // --- Conditional formatting (auto-recomputes as values change, no bot upkeep needed) ---
-  for (const [element, color] of Object.entries(ELEMENT_COLORS)) {
-    requests.push(conditionalTextEq(sheetId, COL.element, element, color, BLACK));
-  }
   for (const [status, { bg, text }] of Object.entries(STATUS_COLORS)) {
     requests.push(conditionalTextEq(sheetId, COL.status, status, bg, text));
   }

@@ -3,7 +3,6 @@ import * as matchesRepo from "../sheets/matchesRepo.js";
 import * as bannedRepo from "../sheets/bannedRepo.js";
 import * as seasonStatsRepo from "../sheets/seasonStatsRepo.js";
 import * as pointsStore from "./pointsStore.js";
-import { ALL_ELEMENTS, type BanScope } from "../sheets/bannedRepo.js";
 import { applyManualRank, compactRanks, shuffleRanks, type RankChange } from "./rankingService.js";
 import { cancelMatch } from "./matchService.js";
 import { syncToCurrentHolder } from "./rank1Tracker.js";
@@ -101,37 +100,32 @@ export async function shuffleLadderRanks(): Promise<ShuffleLadderRanksResult> {
 }
 
 export interface RemoveResult {
-  removedEntries: LadderRow[];
+  /** The removed ladder entry, or undefined if the player wasn't on the ladder. */
+  removedEntry?: LadderRow;
   cancelledMatches: MatchRow[];
 }
 
-/** Removes one or all of a player's ladder entries, cancels any of their pending matches, and compacts ranks. */
-export async function removePlayer(discordUserId: string, scope: BanScope): Promise<RemoveResult> {
-  const playerRows = await ladderRepo.getPlayerRows(discordUserId);
-  const toRemove = scope === ALL_ELEMENTS ? playerRows : playerRows.filter((r) => r.element === scope);
-  if (toRemove.length === 0) return { removedEntries: [], cancelledMatches: [] };
+/** Removes a player's ladder entry, cancels their pending match (if any), and compacts ranks. */
+export async function removePlayer(discordUserId: string): Promise<RemoveResult> {
+  const entry = await ladderRepo.findEntry(discordUserId);
+  if (!entry) return { cancelledMatches: [] };
 
   const cancelledMatches: MatchRow[] = [];
-  for (const entry of toRemove) {
-    const pending = await matchesRepo.getPendingMatchForEntry(entry.discordUserId, entry.element);
-    if (pending) {
-      await cancelMatch(pending);
-      cancelledMatches.push(pending);
-    }
-    await ladderRepo.clearRow(entry.sheetRow);
+  const pending = await matchesRepo.getPendingMatchForPlayer(discordUserId);
+  if (pending) {
+    await cancelMatch(pending);
+    cancelledMatches.push(pending);
   }
+  await ladderRepo.clearRow(entry.sheetRow);
 
-  const remainingLadder = (await ladderRepo.getLadder()).filter(
-    (r) => !toRemove.some((removed) => removed.sheetRow === r.sheetRow),
-  );
+  const remainingLadder = (await ladderRepo.getLadder()).filter((r) => r.sheetRow !== entry.sheetRow);
   const changes = compactRanks(remainingLadder);
   await ladderRepo.setRanks(changes);
   // Always sort, even with no rank changes — clearRow above can leave a blank gap mid-sheet,
   // and sorting moves blanks to the end.
   await ladderRepo.sortLadderByRank();
 
-  const wasRank1 = toRemove.some((r) => r.rank === 1);
-  if (wasRank1) {
+  if (entry.rank === 1) {
     const updatedLadder = remainingLadder.map((r) => {
       const change = changes.find((c) => c.sheetRow === r.sheetRow);
       return change ? { ...r, rank: change.newRank } : r;
@@ -139,7 +133,7 @@ export async function removePlayer(discordUserId: string, scope: BanScope): Prom
     await syncToCurrentHolder(updatedLadder);
   }
 
-  return { removedEntries: toRemove, cancelledMatches };
+  return { removedEntry: entry, cancelledMatches };
 }
 
 export interface BanResult extends RemoveResult {}
@@ -147,19 +141,17 @@ export interface BanResult extends RemoveResult {}
 export async function banPlayer(
   discordUserId: string,
   discordName: string,
-  scope: BanScope,
   reason: string,
   bannedByUserId: string,
 ): Promise<BanResult> {
   await bannedRepo.addBan({
     discordUserId,
     discordName,
-    element: scope,
     reason,
     bannedAt: new Date().toISOString(),
     bannedByUserId,
   });
-  return removePlayer(discordUserId, scope);
+  return removePlayer(discordUserId);
 }
 
 export async function unban(banSheetRow: number): Promise<void> {

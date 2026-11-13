@@ -2,8 +2,6 @@ import { EmbedBuilder, type Client, type TextChannel } from "discord.js";
 import { config } from "../config.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
 import * as ladderRepo from "../sheets/ladderRepo.js";
-import { formatElement } from "../util/formatElement.js";
-import type { Element } from "../types.js";
 
 const PANEL_TITLE = "⚔️ Active Challenges";
 
@@ -22,8 +20,7 @@ export async function refreshActiveChallengesPanel(client: Client): Promise<void
   const textChannel = channel as TextChannel;
 
   const [pending, ladder] = await Promise.all([matchesRepo.getPendingMatches(), ladderRepo.getLadder()]);
-  const entryFor = (userId: string, element: Element) =>
-    ladder.find((r) => r.discordUserId === userId && r.element === element);
+  const entryFor = (userId: string) => ladder.find((r) => r.discordUserId === userId);
 
   const sorted = [...pending].sort((a, b) => Date.parse(a.expiresAt) - Date.parse(b.expiresAt));
 
@@ -32,13 +29,13 @@ export async function refreshActiveChallengesPanel(client: Client): Promise<void
       ? "No active challenges right now."
       : sorted
           .map((m) => {
-            const challenger = entryFor(m.challengerUserId, m.challengerElement);
-            const defender = entryFor(m.defenderUserId, m.defenderElement);
+            const challenger = entryFor(m.challengerUserId);
+            const defender = entryFor(m.defenderUserId);
             const expiresUnix = Math.floor(Date.parse(m.expiresAt) / 1000);
             const crownTag = defender?.rank === 1 ? "👑 **Crown Match** — " : "";
             return (
-              `${crownTag}**${challenger?.characterName ?? "Unknown"}** (${formatElement(m.challengerElement)}, rank ${challenger?.rank ?? "?"}) vs ` +
-              `**${defender?.characterName ?? "Unknown"}** (${formatElement(m.defenderElement)}, rank ${defender?.rank ?? "?"}) — ` +
+              `${crownTag}<@${m.challengerUserId}> (rank ${challenger?.rank ?? "?"}) vs ` +
+              `<@${m.defenderUserId}> (rank ${defender?.rank ?? "?"}) — ` +
               `expires <t:${expiresUnix}:R> — \`${m.matchId}\``
             );
           })

@@ -15,15 +15,12 @@ vi.mock("../src/domain/rank1Tracker.js", () => ({
 
 import * as ladderRepo from "../src/sheets/ladderRepo.js";
 import * as rank1Tracker from "../src/domain/rank1Tracker.js";
-import { leaveLadderEntry } from "../src/domain/leaveLadderService.js";
+import { leaveLadder } from "../src/domain/leaveLadderService.js";
 
 function entry(overrides: Partial<LadderRow> = {}): LadderRow {
   return {
     sheetRow: 2,
     rank: 3,
-    element: "Cold",
-    build: "Vita",
-    characterName: "Frosty",
     discordName: "user#1",
     discordUserId: "u1",
     status: "Available",
@@ -47,24 +44,24 @@ beforeEach(() => {
   vi.mocked(rank1Tracker.syncToCurrentHolder).mockReset();
 });
 
-describe("leaveLadderEntry", () => {
+describe("leaveLadder", () => {
   it("returns an error when the caller has no such entry", async () => {
     vi.mocked(ladderRepo.findEntry).mockResolvedValue(undefined);
 
-    const result = await leaveLadderEntry("u1", "Cold");
+    const result = await leaveLadder("u1");
 
     expect(result).toEqual({ ok: false, reason: "You don't have that entry on the ladder anymore." });
     expect(ladderRepo.clearRow).not.toHaveBeenCalled();
   });
 
   it("clears the entry and compacts the ranks below it", async () => {
-    const top = entry({ sheetRow: 2, rank: 1, discordUserId: "u2", characterName: "Ember" });
+    const top = entry({ sheetRow: 2, rank: 1, discordUserId: "u2", discordName: "Ember" });
     const leaving = entry({ sheetRow: 3, rank: 2 });
-    const below = entry({ sheetRow: 4, rank: 3, discordUserId: "u3", characterName: "Blaze" });
+    const below = entry({ sheetRow: 4, rank: 3, discordUserId: "u3", discordName: "Blaze" });
     vi.mocked(ladderRepo.findEntry).mockResolvedValue(leaving);
     vi.mocked(ladderRepo.getLadder).mockResolvedValue([top, leaving, below]);
 
-    const result = await leaveLadderEntry("u1", "Cold");
+    const result = await leaveLadder("u1");
 
     expect(result).toEqual({ ok: true, removedEntry: leaving });
     expect(ladderRepo.clearRow).toHaveBeenCalledWith(3);
@@ -75,11 +72,11 @@ describe("leaveLadderEntry", () => {
 
   it("syncs the rank-1 tracker when the leaver held rank 1", async () => {
     const leaving = entry({ sheetRow: 2, rank: 1 });
-    const newTop = entry({ sheetRow: 3, rank: 2, discordUserId: "u2", characterName: "Ember" });
+    const newTop = entry({ sheetRow: 3, rank: 2, discordUserId: "u2", discordName: "Ember" });
     vi.mocked(ladderRepo.findEntry).mockResolvedValue(leaving);
     vi.mocked(ladderRepo.getLadder).mockResolvedValue([leaving, newTop]);
 
-    const result = await leaveLadderEntry("u1", "Cold");
+    const result = await leaveLadder("u1");
 
     expect(result).toEqual({ ok: true, removedEntry: leaving });
     expect(rank1Tracker.syncToCurrentHolder).toHaveBeenCalledWith([expect.objectContaining({ sheetRow: 3, rank: 1 })]);

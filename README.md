@@ -15,6 +15,7 @@ requests with screenshot evidence.
 - [Setup](#setup)
 - [Deployment](#deployment)
 - [Testing the flows end-to-end](#testing-the-flows-end-to-end)
+- [License](#license)
 
 ## Channels
 
@@ -205,3 +206,7 @@ speed up expiry/warning testing, temporarily lower the relevant `_MS` variables 
 - **Self-service Extended Vacation**: approve removes the entry from `Ladder` into `ExtendedVacation`; Return
   reinserts at old rank + 1 and auto-challenges whoever holds it now (skipped if they're mid-match). Confirm the
   3-day warning and that full expiry clears the row and resets activity points.
+
+## License
+
+[MIT](LICENSE)

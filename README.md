@@ -1,4 +1,4 @@
-# SVS League Ladder Bot
+# NvD League Ladder Bot
 
 A Discord bot that runs a competitive Necro vs Druid ladder league (every match is a mirror match — no elements,
 builds, or character names) with a Google Sheet as the live database. Handles signups, challenges, win reporting, vacations, and admin-reviewed dodge

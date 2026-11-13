@@ -1,4 +1,4 @@
-SVS LEAGUE LADDER — ADMIN & MODERATOR GUIDE
+NVD LEAGUE LADDER — ADMIN & MODERATOR GUIDE
 Last updated: 2026-11-13
 
 This document explains how the ladder league bot works end to end, and lists every

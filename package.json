@@ -1,7 +1,7 @@
 {
-  "name": "svs-lld-bot",
+  "name": "nvd-lld-bot",
   "version": "1.0.0",
-  "description": "Discord bot managing the SVS league ladder (challenges, wins, dodges, vacations) backed by a live Google Sheet.",
+  "description": "Discord bot managing the NvD (Necro vs Druid) league ladder (challenges, wins, dodges, vacations) backed by a live Google Sheet.",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

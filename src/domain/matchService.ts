@@ -20,10 +20,10 @@ export async function playerHasPendingMatch(discordUserId: string): Promise<bool
 }
 
 /**
- * If the challenger most recently lost to the defender within the configured cooldown window,
- * returns when that cooldown lifts; otherwise null. Only a reported
- * loss counts — a dodge-approved match always credits the win to its own challenger, so it can
- * never represent this challenger losing.
+ * If the challenger most recently lost a reported match to the defender — in either role, so a
+ * defender who loses their spot can't immediately challenge back for it — within the configured
+ * cooldown window, returns when that cooldown lifts; otherwise null. Dodge-approved matches don't
+ * count as a loss.
  */
 export async function getChallengeCooldownExpiry(
   challengerUserId: string,
@@ -33,9 +33,9 @@ export async function getChallengeCooldownExpiry(
   const losses = all.filter(
     (m) =>
       m.status === "Reported" &&
-      m.challengerUserId === challengerUserId &&
-      m.defenderUserId === defenderUserId &&
-      m.winnerUserId === defenderUserId,
+      m.winnerUserId === defenderUserId &&
+      ((m.challengerUserId === challengerUserId && m.defenderUserId === defenderUserId) ||
+        (m.challengerUserId === defenderUserId && m.defenderUserId === challengerUserId)),
   );
   if (losses.length === 0) return null;
 

@@ -49,7 +49,7 @@ requests with screenshot evidence.
 - **Issuing**: `/challenge` or the `#challenges` **Challenge** button. Reach up to 3 ranks up (`CHALLENGE_RANGE`),
   or 2 if the target is in the top 10 (`TOP_TIER_SIZE` / `TOP_TIER_CHALLENGE_RANGE`). Vacationing players are
   skipped, not counted. One active match per player at a time.
-- **Post-loss cooldown**: 12h (`CHALLENGE_COOLDOWN_MS`) before re-challenging the exact player you just lost to;
+- **Post-loss cooldown**: 24h (`CHALLENGE_COOLDOWN_MS`) before re-challenging the exact player you just lost to;
   other targets are unaffected.
 - **Match threads**: a private thread under `#challenges`, visible to both participants; League Managers get access
   via a one-time `ManageThreads` role grant rather than a per-thread invite. Has **Report Win**, **Request Dodge**,

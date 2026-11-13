@@ -249,6 +249,35 @@ describe("getChallengeCooldownExpiry", () => {
     expect(expiry!.getTime()).toBeGreaterThan(Date.now());
   });
 
+  it("applies when the challenger lost as the defender (can't immediately challenge back for the spot)", async () => {
+    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
+      matchRow({
+        status: "Reported",
+        challengerUserId: "u2",
+        defenderUserId: "u1",
+        winnerUserId: "u2",
+        resolvedAt: new Date().toISOString(),
+      }),
+    ]);
+    const expiry = await getChallengeCooldownExpiry("u1", "u2");
+    expect(expiry).not.toBeNull();
+    expect(expiry!.getTime()).toBeGreaterThan(Date.now() + 23 * 60 * 60 * 1000);
+  });
+
+  it("ignores a successful defense (u1 defended against u2 and won)", async () => {
+    vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
+      matchRow({
+        status: "Reported",
+        challengerUserId: "u2",
+        defenderUserId: "u1",
+        winnerUserId: "u1",
+        resolvedAt: new Date().toISOString(),
+      }),
+    ]);
+    const expiry = await getChallengeCooldownExpiry("u1", "u2");
+    expect(expiry).toBeNull();
+  });
+
   it("ignores a win (the challenger wasn't the one who lost)", async () => {
     vi.mocked(matchesRepo.getAllMatches).mockResolvedValue([
       matchRow({

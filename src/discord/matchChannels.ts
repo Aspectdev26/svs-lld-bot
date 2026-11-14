@@ -33,8 +33,8 @@ async function getChallengesParentChannel(client: Client): Promise<TextChannel |
 }
 
 /**
- * Idempotently grants the League Manager role ManageThreads (+ view/send-in-threads) on
- * #challenges, so any League Manager can see and join every match thread without being
+ * Idempotently grants the NvD Admin role ManageThreads (+ view/send-in-threads) on
+ * #challenges, so any NvD Admin can see and join every match thread without being
  * individually added to each one — the thread equivalent of the old per-channel
  * `permissionOverwrites` grant. Call once at startup.
  */
@@ -80,7 +80,7 @@ export async function createMatchChannel(
   }
 
   // Private + not invitable: only the two participants (added below) and anyone with
-  // ManageThreads on the parent (League Managers, via ensureLeagueManagerThreadAccess) can see or
+  // ManageThreads on the parent (NvD Admins, via ensureLeagueManagerThreadAccess) can see or
   // join it — participants can't add outside spectators themselves.
   const thread = await parent.threads.create({
     name: `challenge-${slug(challenger.discordName)}-vs-${slug(defender.discordName)}`,
@@ -104,7 +104,7 @@ export async function createMatchChannel(
         `Use this thread to arrange and play your match. Match expires <t:${expiresUnix}:F> (<t:${expiresUnix}:R>).\n\n` +
         `**Report Win** — either player can self-report the result once the match is played.\n` +
         `**Request Dodge** — if your opponent hasn't responded in 24+ hours, request a dodge (you'll need a screenshot).\n` +
-        `**Request Extension** — ask a League Manager for 2 extra days if you both need more time. One request per match, so make it count.\n` +
+        `**Request Extension** — ask an NvD Admin for 2 extra days if you both need more time. One request per match, so make it count.\n` +
         `**Cancel Match** — voids the match with no rank change. Both players must click it to confirm.\n\n` +
         `This thread is deleted automatically once a result is reported, a dodge is approved, or the match is cancelled.`,
     )
@@ -159,7 +159,7 @@ export async function expireMatchChannel(client: Client, match: MatchRow): Promi
     const description =
       `⚔️ <@${match.challengerUserId}> vs <@${match.defenderUserId}>\n\n` +
       `⌛ This match expired <t:${expiresUnix}:F> with no result reported. No rank change — both players are free to challenge/be challenged again.\n\n` +
-      `This thread is archived for reference; a League Manager can delete it once it's no longer needed.`;
+      `This thread is archived for reference; an NvD Admin can delete it once it's no longer needed.`;
     const embed = new EmbedBuilder().setTitle("Match thread (expired)").setDescription(description).setColor(0x7f8c8d);
 
     if (original) {

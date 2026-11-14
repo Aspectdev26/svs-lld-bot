@@ -102,7 +102,7 @@ export async function approveExtendedVacationRequest(request: VacationRequestRow
   await vacationRequestsRepo.updateRequest(request);
 }
 
-/** Scheduler path: a 14-day-unreturned Vacation auto-escalates into Extended Vacation with no League Manager involved. */
+/** Scheduler path: a 14-day-unreturned Vacation auto-escalates into Extended Vacation with no NvD Admin involved. */
 export function autoEscalateToExtendedVacation(entry: LadderRow): Promise<void> {
   return enterExtendedVacation(entry, "AutoEscalated", "");
 }

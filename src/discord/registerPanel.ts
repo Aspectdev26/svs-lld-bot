@@ -49,13 +49,13 @@ export async function ensureRegisterPanel(client: Client): Promise<void> {
     .setTitle("Join the Ladder")
     .setDescription(
       "Click **Sign Up** below to join the ladder — no form to fill out, your Discord name is all we need. " +
-        "A League Manager reviews every request before you're added. Every match is a Necro vs Druid mirror match.\n\n" +
+        "An NvD Admin reviews every request before you're added. Every match is a Necro vs Druid mirror match.\n\n" +
         "Already on the ladder and want out? Click **Leave Ladder** — this removes you and shifts " +
         "everyone below you up a rank. If you're in an active match, leaving counts as a loss.\n\n" +
         "**Request Vacation** pauses your spot (up to 14 days) so you can't be challenged — click **Return from Vacation** " +
         "any time before then, or you'll be auto-moved to Extended Vacation. **Request Extended Vacation** removes you from " +
         "the ladder entirely (up to 30 days) — click **Return from Extended Vacation** to rejoin at your old rank + 1, or you'll " +
-        "be fully removed and your season points reset. Both Vacation requests need League Manager approval, and being in an " +
+        "be fully removed and your season points reset. Both Vacation requests need NvD Admin approval, and being in an " +
         "active match when one is approved counts as a loss.",
     )
     .setColor(0x3498db);

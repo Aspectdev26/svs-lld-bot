@@ -11,7 +11,7 @@ requests with screenshot evidence.
 - [Challenges & matches](#challenges--matches)
 - [Vacation](#vacation)
 - [Stats & leaderboard](#stats--leaderboard)
-- [League Manager dashboard](#league-manager-dashboard)
+- [NvD Admin dashboard](#league-manager-dashboard)
 - [Setup](#setup)
 - [Deployment](#deployment)
 - [Testing the flows end-to-end](#testing-the-flows-end-to-end)
@@ -25,7 +25,7 @@ requests with screenshot evidence.
 | `#challenges` | Two pinned, self-updating panels: the **Challenge** button and the **Active Challenges** list. |
 | Results channel | Permanent log — every challenge, result, dodge, extension, and admin action. Nothing here auto-deletes. |
 | `#rankings` | Pinned Top 10 leaderboard image only. |
-| `#league-managers` | Pending approvals (signups, vacations, dodges, extensions) plus the pinned League Manager dashboard. |
+| `#league-managers` | Pending approvals (signups, vacations, dodges, extensions) plus the pinned NvD Admin dashboard. |
 | `#announcements` | Flashy post on every approved signup. |
 
 ## Registration & the ladder
@@ -40,7 +40,7 @@ requests with screenshot evidence.
 - **The `Ladder` tab** columns: `Rank`, `discUser`, `Status`, `cDate`, `Opp#`, `discord userid`, `Notes`, `Dodges`,
   `DodgesAgainst`, plus two bot-only vacation timestamp columns. `Status` is `Available`, `Vacation`, or `Challenge` (with `cDate`/`Opp#` filled in while a
   match is active). Colors/badges are native Sheets conditional formatting — the bot only ever writes text/numbers.
-  Rows re-sort by `Rank` after any rank change; `Notes` is left alone for League Managers.
+  Rows re-sort by `Rank` after any rank change; `Notes` is left alone for NvD Admins.
 - Every approval request in `#league-managers` deletes itself once actioned; personal ephemeral bot replies that
   reach a final step self-delete after 5s (except the **Guide** reply, which is reference material).
 
@@ -51,7 +51,7 @@ requests with screenshot evidence.
   skipped, not counted. One active match per player at a time.
 - **Post-loss cooldown**: 24h (`CHALLENGE_COOLDOWN_MS`) before re-challenging the exact player you just lost to;
   other targets are unaffected.
-- **Match threads**: a private thread under `#challenges`, visible to both participants; League Managers get access
+- **Match threads**: a private thread under `#challenges`, visible to both participants; NvD Admins get access
   via a one-time `ManageThreads` role grant rather than a per-thread invite. Has **Report Win**, **Request Dodge**,
   and **Request Extension** buttons. Deleted automatically on result/dodge-approval; left in place (and
   auto-archived) on plain expiry so a manager can still review it.
@@ -72,7 +72,7 @@ requests with screenshot evidence.
 
 ## Vacation
 
-- **Vacation** (self-service): `#register` buttons, needs League Manager approval. If you have a pending
+- **Vacation** (self-service): `#register` buttons, needs NvD Admin approval. If you have a pending
   match, approval auto-forfeits it as a loss (counts as a dodge against you, same thresholds as above). Lasts up
   to `VACATION_EXPIRY_MS` (default 14 days); **Return from Vacation** is self-service any time before then. Miss
   the window and it auto-escalates to Extended Vacation, with a DM warning `VACATION_WARNING_LEAD_MS` (default 3
@@ -82,7 +82,7 @@ requests with screenshot evidence.
   **Return** is self-service and reinserts you at your old rank + 1, auto-issuing a challenge against whoever now
   holds that rank (skipped if they're mid-match). Miss the window and you're fully removed, with season
   (activity) points reset to zero.
-- The League Manager dashboard's **Vacation** button is a separate manual admin override (toggles one player);
+- The NvD Admin dashboard's **Vacation** button is a separate manual admin override (toggles one player);
   unlike the self-service flow, it *blocks* instead of auto-forfeiting if there's a pending match.
 
 ## Stats & leaderboard
@@ -93,9 +93,9 @@ requests with screenshot evidence.
 - **Top 10 leaderboard**: a single pinned post in `#rankings`, rendered with `@napi-rs/canvas`, refreshed in place
   on any rank change that touches the top 10.
 
-## League Manager dashboard
+## NvD Admin dashboard
 
-A pinned message in `#league-managers` with buttons gated to the `League Manager` role (self-heals on bot restart,
+A pinned message in `#league-managers` with buttons gated to the `NvD Admin` role (self-heals on bot restart,
 so new buttons don't require re-pinning by hand):
 
 | Button | Does |
@@ -110,7 +110,7 @@ so new buttons don't require re-pinning by hand):
 | **Vacation** | Manual toggle for one player (see [Vacation](#vacation)). |
 | **Shuffle Ranks** | Randomizes rank order only — warns first if matches are active. Confirmation required. |
 | **Pause/Resume Ladder** | Freezes/resumes every active match's countdown; blocks new challenges while paused. |
-| **Guide** | League Manager reference doc, as a non-auto-dismissing reply. |
+| **Guide** | NvD Admin reference doc, as a non-auto-dismissing reply. |
 
 Every action here is announced in the results channel.
 
@@ -126,7 +126,7 @@ Every action here is announced in the results channel.
    bot.
 3. Enable Developer Mode (User Settings → Advanced). Copy your server ID → `DISCORD_GUILD_ID`, and each channel ID
    from the [Channels](#channels) table into its matching `.env` variable.
-4. Create a `League Manager` role (or set `LEAGUE_MANAGER_ROLE_NAME`) and assign it to your admins.
+4. Create a `NvD Admin` role (or set `LEAGUE_MANAGER_ROLE_NAME`) and assign it to your admins.
 
 ### 2. Google Sheet
 
@@ -160,9 +160,19 @@ Then:
 ```
 npm install
 npm run build
-npm run register-commands   # pushes slash commands to your test guild — re-run whenever commands change
+npm run check-setup         # verifies the server, channels, bot permissions, and NvD Admin role
+npm run register-commands   # pushes slash commands to DISCORD_GUILD_ID — re-run whenever commands change
 npm start
 ```
+
+### Moving to a different Discord server
+
+1. Invite the bot to the new server (`bot` + `applications.commands` scopes).
+2. Create the six channels and the NvD Admin role there, then update `DISCORD_GUILD_ID`, the six
+   `*_CHANNEL_ID` values, and `LEAGUE_MANAGER_ROLE_NAME` in `.env`.
+3. `npm run check-setup` — fix anything it reports. It lists exactly which permissions are missing in which channel.
+4. `npm run register-commands`, then `npm run clear-commands -- <oldServerId>` to remove the commands from the old server.
+5. Restart the bot. It posts and pins every panel in the new channels by itself on startup.
 
 `npm run dev` runs directly from TypeScript via `tsx`, no build step. `npm test` runs the unit tests (pure
 rank/challenge logic, no Discord or Google credentials required).
@@ -197,7 +207,7 @@ speed up expiry/warning testing, temporarily lower the relevant `_MS` variables 
   or a denial) is rejected.
 - **Self-service Dodge Request**: posting a screenshot then **Submit Dodge Request** reaches `#league-managers`
   the same as `/dodge-request`.
-- **League Manager dashboard**: exercise each button — Set Rank (mid-ladder shift), Force-Cancel Match, Remove
+- **NvD Admin dashboard**: exercise each button — Set Rank (mid-ladder shift), Force-Cancel Match, Remove
   Player (removal + match cancellation), Ban/Unban, and Reset Ladder last
   (confirms the season-name modal, match cancellation, rank randomization, and that the old tab is preserved).
 - **Top 10 panel**: posts/pins on first startup; updates in place (no duplicate/re-pin) on any top-10 rank change.

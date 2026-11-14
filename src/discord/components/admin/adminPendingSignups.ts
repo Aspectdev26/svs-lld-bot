@@ -14,7 +14,7 @@ export const PENDING_SIGNUPS_SELECT_ID = "admin_pending_signup_select";
 
 export async function handlePendingSignupsStart(interaction: ButtonInteraction): Promise<void> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can do that.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }
@@ -45,7 +45,7 @@ export async function handlePendingSignupsStart(interaction: ButtonInteraction):
 
 export async function handlePendingSignupSelect(interaction: StringSelectMenuInteraction): Promise<void> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can do that.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }

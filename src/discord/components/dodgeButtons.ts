@@ -28,7 +28,7 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
   const [action, dodgeId] = interaction.customId.split(":");
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can resolve dodge requests.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can resolve dodge requests.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }
@@ -88,7 +88,7 @@ export async function handleDodgeButton(interaction: ButtonInteraction): Promise
   });
 
   if (!resolution.ok) {
-    await postAutoDeletingConfirmation(interaction.client, "This dodge request was already resolved by another League Manager.");
+    await postAutoDeletingConfirmation(interaction.client, "This dodge request was already resolved by another NvD Admin.");
     return;
   }
 

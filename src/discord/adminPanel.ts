@@ -18,7 +18,7 @@ export const ADMIN_BUTTON_IDS = {
 
 function buildPanelContent() {
   const embed = new EmbedBuilder()
-    .setTitle("League Manager Dashboard")
+    .setTitle("NvD Admin Dashboard")
     .setDescription(
       "**Reset Ladder (End Season)** — cancels all active matches, randomizes everyone's rank order, and asks for a " +
         "name for the new season that's starting — its defends/wins/losses track live in a tab titled with that " +
@@ -36,7 +36,7 @@ function buildPanelContent() {
         "Warns you first if there are active challenges. Requires confirmation.\n" +
         "**Pause/Resume Ladder** — pausing blocks new challenges from being issued and freezes the timers on " +
         "already-active matches; resuming shifts those timers forward by however long the ladder was paused.\n" +
-        "**Guide** — pulls up the full League Manager reference (channels, rules, how-tos), visible only to you.\n" +
+        "**Guide** — pulls up the full NvD Admin reference (channels, rules, how-tos), visible only to you.\n" +
         "**Points Standing** — this season's activity standings, visible only to you.",
     )
     .setColor(0x992d22);
@@ -65,7 +65,7 @@ function buildPanelContent() {
   return { embeds: [embed], components: [row1, row2, row3, row4] };
 }
 
-/** Posts (and pins) the League Manager admin dashboard to #league-managers, or refreshes it in place if it already exists. */
+/** Posts (and pins) the NvD Admin admin dashboard to #league-managers, or refreshes it in place if it already exists. */
 export async function ensureAdminPanel(client: Client): Promise<void> {
   const channel = await client.channels.fetch(config.channels.leagueManagers);
   if (!channel || !channel.isTextBased()) {
@@ -78,7 +78,7 @@ export async function ensureAdminPanel(client: Client): Promise<void> {
   const existing = pinned.find(
     ({ message: m }) =>
       m.author.id === client.user?.id &&
-      m.embeds.some((e) => e.title === "League Manager Dashboard"),
+      m.embeds.some((e) => e.title === "NvD Admin Dashboard"),
   )?.message;
 
   const content = buildPanelContent();

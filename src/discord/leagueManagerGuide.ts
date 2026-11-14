@@ -1,12 +1,12 @@
 import { EmbedBuilder } from "discord.js";
 import { config } from "../config.js";
 
-/** Consolidated League Manager reference — shown on demand via the Dashboard's Guide button. */
+/** Consolidated NvD Admin reference — shown on demand via the Dashboard's Guide button. */
 export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
   const overview = new EmbedBuilder()
-    .setTitle("📘 League Manager Guide")
+    .setTitle("📘 NvD Admin Guide")
     .setDescription(
-      "Single up-to-date reference for how the league bot works and what League Managers can do. The action " +
+      "Single up-to-date reference for how the league bot works and what NvD Admins can do. The action " +
         "buttons themselves live on the **Dashboard** — click **Guide** there any time to pull this back up.\n\n" +
         "**Channels**\n" +
         `⚔️ <#${config.channels.challenges}> — pinned **Challenge** button + the always-current **Active Challenges** list. Nothing else posts here.\n` +
@@ -26,7 +26,7 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "**Sign up** → one click, no form; the request (just the player's Discord name) lands in this channel → " +
         "Approve/Deny.\n\n" +
         "**Challenge** → reach up to 3 ranks up (2 if the target's in the Top 10). Can't hit anyone on Vacation, " +
-        "and each player can only be in one match at a time. Opens a private match channel (the two players + League Managers) with " +
+        "and each player can only be in one match at a time. Opens a private match channel (the two players + NvD Admins) with " +
         "Report Win / Request Dodge / Request Extension. 72h to resolve, warned at the 24h mark.\n\n" +
         "**Post-loss cooldown** → after a reported loss, that player can't re-challenge the player " +
         "they lost to again for 24h (whether they lost as challenger or defender). Only applies to that one matchup — every other target is unaffected.\n\n" +
@@ -43,11 +43,11 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "**Extension** → +2 days on a match, one request per match (denying spends it too), comes here for Approve/Deny.\n\n" +
         "**Leave Ladder** → a player can remove themselves any time. An active match is " +
         "recorded as a loss for them first. Not reversible.\n\n" +
-        "**Vacation (self-service)** → *Request Vacation* in #register needs League Manager Approve/Deny here " +
+        "**Vacation (self-service)** → *Request Vacation* in #register needs NvD Admin Approve/Deny here " +
         "(same as sign-ups). If approved while the player has a pending match, that match is auto-forfeited (opponent " +
         "wins) and counts as a dodge for the requester — including toward the 2/3 warning-removal thresholds. " +
         "Approved Vacation lasts up to 14 days; *Return from Vacation* is self-service, no approval needed. Miss the " +
-        "14 days and the player auto-escalates to Extended Vacation with no League Manager involved. The Dashboard's " +
+        "14 days and the player auto-escalates to Extended Vacation with no NvD Admin involved. The Dashboard's " +
         "own **Vacation** toggle still exists as a manual admin override (blocks instead of auto-forfeiting if a " +
         "match is pending).\n\n" +
         "**Extended Vacation (self-service)** → *Request Extended Vacation* works from Available or Vacation, also " +

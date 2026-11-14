@@ -69,7 +69,7 @@ const VACATION_REQUEST_DEF: RequestFlowDef = {
     `If you're in an active match, please try to finish it first. If this is approved while you still have a match pending, ` +
     `you'll receive an automatic loss for it and it will count toward your dodge total.\n\n` +
     `Vacation lasts up to **14 days** — if you don't return in time, you'll be automatically moved to Extended Vacation.\n\n` +
-    `A League Manager must approve this request.`,
+    `An NvD Admin must approve this request.`,
 };
 
 const EXTENDED_VACATION_REQUEST_DEF: RequestFlowDef = {
@@ -86,7 +86,7 @@ const EXTENDED_VACATION_REQUEST_DEF: RequestFlowDef = {
     `you'll receive an automatic loss for it and it will count toward your dodge total.\n\n` +
     `Extended Vacation lasts up to **30 days** — if you don't return in time, you'll be **completely removed from the ladder** ` +
     `and your season points will be reset to zero. You'd need to sign up again to rejoin.\n\n` +
-    `A League Manager must approve this request.`,
+    `An NvD Admin must approve this request.`,
 };
 
 function buildSubmitConfirm(entry: LadderRow, def: RequestFlowDef): { content: string; row: ActionRowBuilder<ButtonBuilder> } {
@@ -149,7 +149,7 @@ async function handleRequestSubmitResolve(interaction: ButtonInteraction, def: R
   }
 
   const followUp = await interaction.followUp({
-    content: `${def.label} request submitted — a League Manager will review it shortly.`,
+    content: `${def.label} request submitted — an NvD Admin will review it shortly.`,
     ephemeral: true,
   });
   scheduleReplyCleanup(interaction);
@@ -207,7 +207,7 @@ async function handleRequestApproveDenyButton(interaction: ButtonInteraction, de
   const [action, requestId] = interaction.customId.split(":");
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can resolve vacation requests.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can resolve vacation requests.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }
@@ -242,7 +242,7 @@ async function handleRequestApproveDenyButton(interaction: ButtonInteraction, de
   await interaction.deferUpdate();
 
   // The whole approve path — re-check, possible forfeit, and the final Approved write — runs
-  // inside the shared resolution queue so a second League Manager's click (Approve or Deny) on
+  // inside the shared resolution queue so a second NvD Admin's click (Approve or Deny) on
   // this same request can never race past this one's write. See resolutionQueue.ts.
   const resolution = await enqueueResolution(async () => {
     const freshRequest = await vacationRequestsRepo.getRequestById(requestId);
@@ -278,7 +278,7 @@ async function handleRequestApproveDenyButton(interaction: ButtonInteraction, de
 
   if (!resolution.ok) {
     await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
-    await postAutoDeletingConfirmation(interaction.client, "This request was already resolved by another League Manager.");
+    await postAutoDeletingConfirmation(interaction.client, "This request was already resolved by another NvD Admin.");
     return;
   }
 
@@ -359,7 +359,7 @@ async function handleRequestDenyModal(interaction: ModalSubmitInteraction, def: 
   const requestId = interaction.customId.slice(`${def.denyModalPrefix}:`.length);
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can resolve vacation requests.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can resolve vacation requests.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }

@@ -36,7 +36,7 @@ async function requireLeagueManager(
   interaction: ButtonInteraction | StringSelectMenuInteraction | UserSelectMenuInteraction | ModalSubmitInteraction,
 ): Promise<boolean> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can do that.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return false;
   }

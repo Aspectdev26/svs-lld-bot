@@ -7,7 +7,7 @@ import { closeMatchChannel } from "../discord/matchChannels.js";
 import type { DodgeRow, MatchRow } from "../types.js";
 import { genId } from "./matchService.js";
 
-/** dodgeCount at which the dodged-against player gets a private warning DM + League Manager notice. */
+/** dodgeCount at which the dodged-against player gets a private warning DM + NvD Admin notice. */
 export const DODGE_WARNING_THRESHOLD = 2;
 /** dodgeCount at which the dodged-against player's entry is automatically removed from the ladder. */
 export const DODGE_REMOVAL_THRESHOLD = 3;
@@ -15,7 +15,7 @@ export const DODGE_REMOVAL_THRESHOLD = 3;
 /**
  * Reacts to a player's dodgeCount after it's been incremented for some entry (a dodge-approved
  * match, or a forfeited match caused by a Vacation/Extended Vacation approval — see
- * vacationService.ts): a private warning DM (+ League Manager notice) at DODGE_WARNING_THRESHOLD,
+ * vacationService.ts): a private warning DM (+ NvD Admin notice) at DODGE_WARNING_THRESHOLD,
  * or an automatic ladder removal at DODGE_REMOVAL_THRESHOLD. A no-op below the warning threshold,
  * or if the dodged-against player's ladder entry couldn't be found. `dodgedUserId` identifies
  * whose count this is — usually the match's defender, but a vacation-forfeit can charge
@@ -47,7 +47,7 @@ export async function handleDodgeCountThreshold(
       const user = await client.users.fetch(dodgedUserId);
       await user.send({ embeds: [dmEmbed] });
     } catch {
-      // DMs closed — the League Manager/results-channel notices below stand as the record.
+      // DMs closed — the NvD Admin/results-channel notices below stand as the record.
     }
 
     const lmEmbed = new EmbedBuilder()
@@ -72,7 +72,7 @@ export async function handleDodgeCountThreshold(
     const user = await client.users.fetch(dodgedUserId);
     await user.send({ embeds: [dmEmbed] });
   } catch {
-    // DMs closed — the League Manager notice below still records it.
+    // DMs closed — the NvD Admin notice below still records it.
   }
 
   const lmEmbed = new EmbedBuilder()

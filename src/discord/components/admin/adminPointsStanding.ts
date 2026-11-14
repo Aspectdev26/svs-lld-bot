@@ -6,7 +6,7 @@ import { scheduleReplyCleanup } from "../../ephemeralCleanup.js";
 /** League-Manager-only: this season's private activity-points standings. Never shown to players. */
 export async function handlePointsStandingButton(interaction: ButtonInteraction): Promise<void> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can do that.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }

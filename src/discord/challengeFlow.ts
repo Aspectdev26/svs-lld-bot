@@ -63,7 +63,7 @@ export async function attemptChallenge(
 
   if (await isLadderPaused()) {
     const sent = await respond({
-      content: "The ladder is currently paused by League Managers — new challenges can't be issued right now.",
+      content: "The ladder is currently paused by NvD Admins — new challenges can't be issued right now.",
       ephemeral: true,
     });
     scheduleReplyCleanup(interaction);

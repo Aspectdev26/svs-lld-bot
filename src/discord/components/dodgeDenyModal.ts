@@ -11,7 +11,7 @@ export async function handleDodgeDenyModal(interaction: ModalSubmitInteraction):
   const dodgeId = interaction.customId.slice(`${DENY_MODAL_PREFIX}:`.length);
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can resolve dodge requests.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can resolve dodge requests.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }

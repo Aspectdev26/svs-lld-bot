@@ -35,7 +35,7 @@ function chunkEmbeds(embeds: EmbedBuilder[]): EmbedBuilder[][] {
 }
 
 /**
- * Shows the consolidated League Manager guide, visible only to whoever clicked it. Deliberately
+ * Shows the consolidated NvD Admin guide, visible only to whoever clicked it. Deliberately
  * exempt from the standard 5s auto-cleanup — it's multi-embed reference material meant to be
  * read, not a pass/fail confirmation, so it's dismissed manually (Discord's own "Dismiss Message").
  * Split across follow-ups when the full guide is too long for one message.

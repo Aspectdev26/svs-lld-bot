@@ -94,7 +94,7 @@ async function handleDodgeSubmit(interaction: ButtonInteraction, matchId: string
  * A match gets exactly one extension request for its lifetime, approved or not: a non-blank
  * `extensionRequestedByUserId` is the permanent "already used" marker, and nothing ever clears it
  * (denying only clears `extensionPending`). So a denied request is spent too — players can't shop
- * a second request around to a different League Manager.
+ * a second request around to a different NvD Admin.
  */
 async function handleExtensionRequest(interaction: ButtonInteraction, matchId: string): Promise<void> {
   const match = await matchesRepo.getMatchById(matchId);
@@ -150,7 +150,7 @@ async function handleExtensionRequest(interaction: ButtonInteraction, matchId: s
     return;
   }
 
-  await interaction.editReply({ content: "Extension request submitted to League Managers for review." });
+  await interaction.editReply({ content: "Extension request submitted to NvD Admins for review." });
   scheduleReplyCleanup(interaction);
 
   const leagueManagerRole = interaction.guild?.roles.cache.find((r) => r.name === config.leagueManagerRoleName);

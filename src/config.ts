@@ -32,7 +32,7 @@ export const config = {
     register: required("REGISTER_CHANNEL_ID"),
     announcements: required("ANNOUNCEMENTS_CHANNEL_ID"),
   },
-  leagueManagerRoleName: process.env.LEAGUE_MANAGER_ROLE_NAME || "League Manager",
+  leagueManagerRoleName: process.env.LEAGUE_MANAGER_ROLE_NAME || "NvD Admin",
   sheets: {
     sheetId: required("GOOGLE_SHEET_ID"),
     serviceAccountEmail: required("GOOGLE_SERVICE_ACCOUNT_EMAIL"),
@@ -47,7 +47,7 @@ export const config = {
     challengeCooldownMs: int("CHALLENGE_COOLDOWN_MS", 24 * 60 * 60 * 1000),
     vacationExpiryMs: int("VACATION_EXPIRY_MS", 14 * 24 * 60 * 60 * 1000),
     extendedVacationExpiryMs: int("EXTENDED_VACATION_EXPIRY_MS", 30 * 24 * 60 * 60 * 1000),
-    /** Lead time before either vacation timer expires that the warning DM/League Manager notice fires. */
+    /** Lead time before either vacation timer expires that the warning DM/NvD Admin notice fires. */
     vacationWarningLeadMs: int("VACATION_WARNING_LEAD_MS", 3 * 24 * 60 * 60 * 1000),
   },
   rules: {

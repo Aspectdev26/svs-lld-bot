@@ -11,6 +11,8 @@
     "dev": "tsx src/index.ts",
     "register-commands": "tsx src/discord/registerCommands.ts",
     "reset-league": "tsx src/scripts/resetLeague.ts",
+    "check-setup": "tsx src/scripts/checkSetup.ts",
+    "clear-commands": "tsx src/scripts/clearCommands.ts",
     "test": "vitest run"
   },
   "engines": {

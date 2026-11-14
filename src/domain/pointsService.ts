@@ -4,7 +4,7 @@ import * as pointsStore from "./pointsStore.js";
 /**
  * Private, admin-only activity score — never exposed to players anywhere. Deliberately weighted
  * toward completing/reporting matches promptly rather than toward winning, so it serves "keep the
- * ladder active" rather than just re-ranking skill. See the League Manager DM for the full formula.
+ * ladder active" rather than just re-ranking skill. See the NvD Admin DM for the full formula.
  */
 
 const HOUR_MS = 60 * 60 * 1000;

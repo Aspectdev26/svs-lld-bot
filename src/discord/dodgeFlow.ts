@@ -64,7 +64,7 @@ export async function submitDodgeRequest(
     return;
   }
 
-  await interaction.editReply({ content: "Dodge request submitted to League Managers for review." });
+  await interaction.editReply({ content: "Dodge request submitted to NvD Admins for review." });
   scheduleReplyCleanup(interaction);
 
   const leagueManagerRole = interaction.guild?.roles.cache.find((r) => r.name === config.leagueManagerRoleName);

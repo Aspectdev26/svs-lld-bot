@@ -13,7 +13,7 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
   const [action, matchId] = interaction.customId.split(":");
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can resolve extension requests.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can resolve extension requests.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }
@@ -56,7 +56,7 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
     });
 
     if (!resolution.ok) {
-      await postAutoDeletingConfirmation(interaction.client, "This extension request was already resolved by another League Manager.");
+      await postAutoDeletingConfirmation(interaction.client, "This extension request was already resolved by another NvD Admin.");
       return;
     }
     const { newExpiresAt } = resolution;
@@ -98,7 +98,7 @@ export async function handleExtensionButton(interaction: ButtonInteraction): Pro
   });
 
   if (!denied) {
-    await postAutoDeletingConfirmation(interaction.client, "This extension request was already resolved by another League Manager.");
+    await postAutoDeletingConfirmation(interaction.client, "This extension request was already resolved by another NvD Admin.");
     return;
   }
 

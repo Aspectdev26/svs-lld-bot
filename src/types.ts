@@ -18,13 +18,13 @@ export interface LadderRow {
   challengeDate: string;
   /** The opponent's rank at the moment the active challenge was issued; blank if none. */
   opponentRank: string;
-  /** Free-text field for League Managers — the bot never writes to this column. */
+  /** Free-text field for NvD Admins — the bot never writes to this column. */
   notes: string;
   /** Running count of matches this entry has won via an approved dodge. */
   dodgeWins: number;
   /**
    * Running count of approved dodges *against* this entry (i.e. matches it lost by not
-   * responding). Reaching 2 triggers a private warning to the player plus a League Manager
+   * responding). Reaching 2 triggers a private warning to the player plus an NvD Admin
    * notice; reaching 3 auto-removes the entry from the ladder. Completing a reported match
    * (win or loss) decrements this by 1, down to a floor of 0 — see matchService.reportWin.
    */
@@ -60,7 +60,7 @@ export interface MatchRow {
   resolvedAt: string;
   /** ID of the private per-match Discord thread under #challenges, if one was created. */
   channelId: string;
-  /** True while an extension request for this match is awaiting League Manager approval. */
+  /** True while an extension request for this match is awaiting NvD Admin approval. */
   extensionPending: boolean;
   /** Discord user ID of whichever participant first requested to cancel this match; blank if none. Both participants must request to actually cancel. */
   cancelRequestedByUserId: string;
@@ -131,7 +131,7 @@ export interface SeasonStatsRow {
 export const SIGNUP_STATUSES = ["Pending", "Approved", "Denied"] as const;
 export type SignupStatus = (typeof SIGNUP_STATUSES)[number];
 
-/** A pending (or resolved) request from #register awaiting League Manager approval. */
+/** A pending (or resolved) request from #register awaiting NvD Admin approval. */
 export interface SignupRequestRow {
   sheetRow: number;
   requestId: string;
@@ -158,7 +158,7 @@ export interface BanRow {
 export const VACATION_REQUEST_TYPES = ["Vacation", "ExtendedVacation"] as const;
 export type VacationRequestType = (typeof VACATION_REQUEST_TYPES)[number];
 
-/** A pending (or resolved) self-service Vacation/Extended Vacation request awaiting League Manager approval. */
+/** A pending (or resolved) self-service Vacation/Extended Vacation request awaiting NvD Admin approval. */
 export interface VacationRequestRow {
   sheetRow: number;
   requestId: string;
@@ -187,7 +187,7 @@ export interface ExtendedVacationRow {
   /** enteredAt + 30 days, stored explicitly so the watcher doesn't need to recompute it. */
   expiresAt: string;
   source: ExtendedVacationSource;
-  /** League Manager who approved the request; blank if auto-escalated from an expired Vacation. */
+  /** NvD Admin who approved the request; blank if auto-escalated from an expired Vacation. */
   approvedByUserId: string;
   /** ISO timestamp the 3-day-before-expiry warning was sent; blank if not sent yet. */
   warningSentAt: string;

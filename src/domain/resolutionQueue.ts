@@ -9,7 +9,7 @@
  * Queue every resolution through here, and re-read the row's live status from inside the
  * callback right before acting, so whichever click runs second always sees the first one's
  * outcome and can bail out instead of repeating the work. One shared queue across all these
- * flows is fine — League Manager approvals are rare enough that cross-flow serialization costs
+ * flows is fine — NvD Admin approvals are rare enough that cross-flow serialization costs
  * nothing observable.
  */
 let queue: Promise<unknown> = Promise.resolve();

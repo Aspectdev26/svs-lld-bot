@@ -72,7 +72,7 @@ export async function handleRegisterStartButton(interaction: ButtonInteraction):
   }
 
   await interaction.editReply({
-    content: "Signup request submitted — a League Manager will review it shortly.",
+    content: "Signup request submitted — an NvD Admin will review it shortly.",
   });
   scheduleReplyCleanup(interaction);
 
@@ -95,7 +95,7 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
   const [action, requestId] = interaction.customId.split(":");
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can resolve signup requests.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can resolve signup requests.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }
@@ -135,7 +135,7 @@ export async function handleRegisterApproveDenyButton(interaction: ButtonInterac
     await deleteMessageByUrl(interaction.client, request.leagueManagerMessageUrl);
     await postAutoDeletingConfirmation(
       interaction.client,
-      "This signup request was already resolved by another League Manager.",
+      "This signup request was already resolved by another NvD Admin.",
     );
     return;
   }
@@ -177,7 +177,7 @@ export async function handleRegisterDenyModal(interaction: ModalSubmitInteractio
   const requestId = interaction.customId.slice(`${DENY_MODAL_PREFIX}:`.length);
 
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can resolve signup requests.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can resolve signup requests.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return;
   }

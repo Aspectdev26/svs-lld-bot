@@ -15,7 +15,7 @@ async function dmUser(client: Client, userId: string, content: string): Promise<
     const user = await client.users.fetch(userId);
     await user.send({ content });
   } catch {
-    // DMs closed — the League Manager notice alongside each call site stands as the record.
+    // DMs closed — the NvD Admin notice alongside each call site stands as the record.
   }
 }
 

@@ -73,7 +73,7 @@ async function main() {
     ensureChallengePanel(client).catch((err) => console.error("Failed to post challenge panel:", err));
     ensureAdminPanel(client).catch((err) => console.error("Failed to post admin panel:", err));
     ensureLeagueManagerThreadAccess(client).catch((err) =>
-      console.error("Failed to grant League Manager thread access:", err),
+      console.error("Failed to grant NvD Admin thread access:", err),
     );
     refreshTop10Panel(client).catch((err) => console.error("Failed to post top 10 panel:", err));
     refreshActiveChallengesPanel(client).catch((err) => console.error("Failed to post active challenges panel:", err));

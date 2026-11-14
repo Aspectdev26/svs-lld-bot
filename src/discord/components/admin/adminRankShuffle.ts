@@ -12,7 +12,7 @@ export const RANK_SHUFFLE_RESOLVE_IDS = [CONFIRM_ID, CANCEL_ID];
 
 async function requireLeagueManager(interaction: ButtonInteraction): Promise<boolean> {
   if (!isLeagueManager(interaction.member as GuildMember | null)) {
-    await interaction.reply({ content: "Only League Managers can do that.", ephemeral: true });
+    await interaction.reply({ content: "Only NvD Admins can do that.", ephemeral: true });
     scheduleReplyCleanup(interaction);
     return false;
   }

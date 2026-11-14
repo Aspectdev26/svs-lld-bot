@@ -8,7 +8,23 @@ import {
   updateSheetCell,
   updateSheetRow,
 } from "./sheetsClient.js";
+import { LADDER_DISPLAY_STATUSES } from "../types.js";
 import type { LadderDisplayStatus, LadderRow, PlayerStatus } from "../types.js";
+
+/**
+ * The Status column is a dropdown (Available / Challenge / Vacation, shown as colored chips) copied
+ * from the league's original reference sheet, so cells must hold exactly one of those words. Every
+ * write goes through statusCellValue() and every read through parseStatusCell(), which tolerates
+ * stray text (e.g. a hand-typed " vacation") so a sloppy manual edit still reads correctly.
+ */
+export function statusCellValue(status: LadderDisplayStatus): string {
+  return status;
+}
+
+export function parseStatusCell(value: string | undefined): LadderDisplayStatus {
+  const lower = (value ?? "").toLowerCase();
+  return LADDER_DISPLAY_STATUSES.find((s) => lower.includes(s.toLowerCase())) ?? "Available";
+}
 
 export const LADDER_SHEET = "Ladder";
 /** Column order/labels follow the league's original reference sheet, minus the old Name/spec/element columns. */
@@ -44,7 +60,7 @@ function rowFromValues(sheetRow: number, values: string[]): LadderRow {
     sheetRow,
     rank: Number.parseInt(rank, 10),
     discordName: discordName ?? "",
-    status: (status as LadderDisplayStatus) || "Available",
+    status: parseStatusCell(status),
     challengeDate: challengeDate ?? "",
     opponentRank: opponentRank ?? "",
     discordUserId: discordUserId ?? "",
@@ -61,7 +77,7 @@ function toValues(entry: Omit<LadderRow, "sheetRow">): (string | number)[] {
   return [
     entry.rank,
     entry.discordName,
-    entry.status,
+    statusCellValue(entry.status),
     entry.challengeDate,
     entry.opponentRank,
     entry.discordUserId,
@@ -110,7 +126,7 @@ export async function setRanks(changes: { sheetRow: number; newRank: number }[])
 
 /** Sets Vacation/Available on one ladder entry. */
 export async function setStatusForEntry(sheetRow: number, status: PlayerStatus): Promise<void> {
-  await updateSheetCell(LADDER_SHEET, sheetRow, "C", status);
+  await updateSheetCell(LADDER_SHEET, sheetRow, "C", statusCellValue(status));
 }
 
 /** ISO timestamp of when this entry's status became "Vacation" — drives the 14-day auto-escalation watcher. Pass "" to clear. */
@@ -126,7 +142,7 @@ export async function setVacationWarningSentAt(sheetRow: number, iso: string): P
 /** Marks an entry as actively challenging: Status="Challenge" plus the opponent's rank and a display timestamp. */
 export async function setChallengeInfo(sheetRow: number, opponentRank: number, challengeDateDisplay: string): Promise<void> {
   await batchUpdateValues([
-    { range: `${LADDER_SHEET}!C${sheetRow}:E${sheetRow}`, values: [["Challenge", challengeDateDisplay, opponentRank]] },
+    { range: `${LADDER_SHEET}!C${sheetRow}:E${sheetRow}`, values: [[statusCellValue("Challenge"), challengeDateDisplay, opponentRank]] },
   ]);
 }
 
@@ -139,8 +155,22 @@ export async function clearChallengeInfo(sheetRow: number): Promise<void> {
 export async function clearChallengeInfoForRows(sheetRows: number[]): Promise<void> {
   if (sheetRows.length === 0) return;
   await batchUpdateValues(
-    sheetRows.map((row) => ({ range: `${LADDER_SHEET}!C${row}:E${row}`, values: [["Available", "", ""]] })),
+    sheetRows.map((row) => ({ range: `${LADDER_SHEET}!C${row}:E${row}`, values: [[statusCellValue("Available"), "", ""]] })),
   );
+}
+
+/**
+ * Rewrites any Status cell that isn't exactly its dropdown value (e.g. typed in by hand with extra
+ * text). Returns how many cells were fixed.
+ */
+export async function normalizeStatusCells(): Promise<number> {
+  const ladder = await getLadder();
+  const values = await readSheetRange(`${LADDER_SHEET}!C2:C`);
+  const fixes = ladder
+    .filter((row) => (values[row.sheetRow - 2]?.[0] ?? "") !== statusCellValue(row.status))
+    .map((row) => ({ range: `${LADDER_SHEET}!C${row.sheetRow}`, values: [[statusCellValue(row.status)]] }));
+  if (fixes.length > 0) await batchUpdateValues(fixes);
+  return fixes.length;
 }
 
 export async function setDodgeWins(sheetRow: number, count: number): Promise<void> {

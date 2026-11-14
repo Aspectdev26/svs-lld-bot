@@ -11,7 +11,7 @@ import { ensureLeagueManagerThreadAccess } from "./discord/matchChannels.js";
 import { refreshTop10Panel } from "./discord/top10Panel.js";
 import { refreshActiveChallengesPanel } from "./discord/activeChallengesPanel.js";
 import { ensureSheetTabs } from "./sheets/sheetsClient.js";
-import { LADDER_SHEET, LADDER_HEADERS } from "./sheets/ladderRepo.js";
+import { LADDER_SHEET, LADDER_HEADERS, normalizeStatusCells } from "./sheets/ladderRepo.js";
 import { MATCHES_SHEET, MATCHES_HEADERS } from "./sheets/matchesRepo.js";
 import { DODGES_SHEET, DODGES_HEADERS } from "./sheets/dodgesRepo.js";
 import { RANK1_SHEET, RANK1_HEADERS } from "./sheets/rank1Repo.js";
@@ -46,6 +46,7 @@ async function main() {
     ensureSheetTabs([{ name: LADDER_SHEET, headers: LADDER_HEADERS }, ...NON_LADDER_TABS]),
   );
 
+  await normalizeStatusCells().catch((err) => console.error("Failed to normalize Ladder status cells:", err));
   await applyLadderFormatting().catch((err) => console.error("Failed to apply Ladder sheet formatting:", err));
   for (const tab of NON_LADDER_TABS) {
     await applyStandardTabFormatting(tab.name, tab.headers.length).catch((err) =>

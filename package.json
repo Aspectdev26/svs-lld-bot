@@ -13,6 +13,7 @@
     "reset-league": "tsx src/scripts/resetLeague.ts",
     "check-setup": "tsx src/scripts/checkSetup.ts",
     "clear-commands": "tsx src/scripts/clearCommands.ts",
+    "switch-server": "tsx src/scripts/switchServer.ts",
     "test": "vitest run"
   },
   "engines": {

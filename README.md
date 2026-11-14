@@ -167,12 +167,20 @@ npm start
 
 ### Moving to a different Discord server
 
-1. Invite the bot to the new server (`bot` + `applications.commands` scopes).
-2. Create the six channels and the NvD Admin role there, then update `DISCORD_GUILD_ID`, the six
-   `*_CHANNEL_ID` values, and `LEAGUE_MANAGER_ROLE_NAME` in `.env`.
-3. `npm run check-setup` — fix anything it reports. It lists exactly which permissions are missing in which channel.
-4. `npm run register-commands`, then `npm run clear-commands -- <oldServerId>` to remove the commands from the old server.
-5. Restart the bot. It posts and pins every panel in the new channels by itself on startup.
+1. Invite the bot to the new server (`bot` + `applications.commands` scopes) and create the six channels and the
+   NvD Admin role there.
+2. Stop the bot through the dashboard agent (required if you're resetting the league).
+3. Run, with the new server's IDs:
+
+   ```
+   npm run switch-server -- --guild <id> --challenges <id> --results <id> --rankings <id> --admins <id> --register <id> --announcements <id> [--role "NvD Admin"] [--reset-league]
+   ```
+
+   It backs up `.env` (`.env.bak-<timestamp>`), writes the new values, and runs `check-setup`. If any check fails
+   it puts `.env` back and stops. Otherwise it optionally resets the league, builds, registers the slash commands
+   on the new server, and removes them from the old one. `npm run check-setup` and
+   `npm run clear-commands -- <serverId>` also work on their own.
+4. Start the bot through the dashboard agent. It posts and pins every panel in the new channels by itself.
 
 `npm run dev` runs directly from TypeScript via `tsx`, no build step. `npm test` runs the unit tests (pure
 rank/challenge logic, no Discord or Google credentials required).

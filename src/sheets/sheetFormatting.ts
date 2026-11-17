@@ -56,8 +56,10 @@ export function standardTabRequests(sheetId: number, columnCount: number): Reque
   requests.push({
     repeatCell: {
       range: gridRange(sheetId, 0, columnCount, 1),
+      // backgroundColor is in the mask with no value, so any fill (e.g. a header style copied onto a data
+      // row) is cleared back to none.
       cell: { userEnteredFormat: { textFormat: textFormat(BLACK, false) } },
-      fields: "userEnteredFormat.textFormat",
+      fields: "userEnteredFormat(backgroundColor,textFormat)",
     },
   });
 

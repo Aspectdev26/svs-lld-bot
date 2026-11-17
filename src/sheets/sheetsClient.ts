@@ -54,7 +54,10 @@ export async function appendSheetRow(sheetName: string, values: (string | number
       spreadsheetId: config.sheets.sheetId,
       range: `${sheetName}!A:A`,
       valueInputOption: "USER_ENTERED",
-      insertDataOption: "INSERT_ROWS",
+      // OVERWRITE fills the next empty (already formatted) row. INSERT_ROWS would insert a fresh row that
+      // copies the formatting of the row above — on an empty tab that's the header, and every insert also
+      // pushes the pre-formatted banding / Status dropdowns further down the sheet.
+      insertDataOption: "OVERWRITE",
       requestBody: { values: [values] },
     });
   });
@@ -175,6 +178,25 @@ export async function batchUpdateSpreadsheet(requests: sheets_v4.Schema$Request[
       requestBody: { requests },
     }),
   );
+}
+
+/**
+ * 0-based row index of the first cell at or below `startRow` in the given column (0-based) that carries a
+ * data-validation rule, or undefined if none does.
+ */
+export async function findFirstValidatedRow(sheetName: string, col: number, startRow: number): Promise<number | undefined> {
+  const letter = String.fromCharCode("A".charCodeAt(0) + col);
+  const res = await queue.run(() =>
+    getSheetsApi().spreadsheets.get({
+      spreadsheetId: config.sheets.sheetId,
+      ranges: [`${sheetName}!${letter}${startRow + 1}:${letter}`],
+      includeGridData: true,
+      fields: "sheets(data(startRow,rowData(values(dataValidation(condition(type))))))",
+    }),
+  );
+  const data = res.data.sheets?.[0]?.data?.[0];
+  const index = (data?.rowData ?? []).findIndex((row) => row.values?.[0]?.dataValidation);
+  return index < 0 ? undefined : (data?.startRow ?? startRow) + index;
 }
 
 /** Full metadata for one tab (sheetId, grid properties, conditional formats, etc.). */

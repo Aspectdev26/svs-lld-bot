@@ -1,5 +1,5 @@
 import type { sheets_v4 } from "googleapis";
-import { batchUpdateSpreadsheet, getSheetMetaByName } from "./sheetsClient.js";
+import { batchUpdateSpreadsheet, findFirstValidatedRow, getSheetMetaByName } from "./sheetsClient.js";
 import { LADDER_SHEET } from "./ladderRepo.js";
 import { BLACK, gridRange, type Color, type Request } from "./sheetFormatting.js";
 
@@ -53,8 +53,8 @@ function columnFormat(sheetId: number, col: number, format: sheets_v4.Schema$Cel
  * and any existing banding / conditional rules are removed and recreated rather than duplicated.
  *
  * The Status column's colored dropdown chips are a data-validation rule copied from the reference
- * sheet (chip colors can't be set through the API). Nothing here touches data validation, so those
- * chips survive every re-run.
+ * sheet (chip colors can't be set through the API). This never creates or changes that rule — it only
+ * re-copies it onto C2 and below if rows ever shifted it down.
  */
 export async function applyLadderFormatting(): Promise<void> {
   const meta = await getSheetMetaByName(LADDER_SHEET);
@@ -159,6 +159,20 @@ export async function applyLadderFormatting(): Promise<void> {
       },
     },
   });
+
+  // Put the Status dropdown back on every data row (C2 down) if it has drifted — copied from the first
+  // cell that still has it, so the chip colors come along.
+  const validatedRow = await findFirstValidatedRow(LADDER_SHEET, COL.status, 1);
+  if (validatedRow !== undefined && validatedRow !== 1) {
+    const rowCount = meta?.properties?.gridProperties?.rowCount ?? 1000;
+    requests.push({
+      copyPaste: {
+        source: gridRange(sheetId, COL.status, COL.status + 1, validatedRow, validatedRow + 1),
+        destination: gridRange(sheetId, COL.status, COL.status + 1, 1, rowCount),
+        pasteType: "PASTE_DATA_VALIDATION",
+      },
+    });
+  }
 
   // Thin black grid borders.
   const line = { style: "SOLID", width: 1, color: BLACK };

@@ -57,7 +57,7 @@ requests with screenshot evidence.
   auto-archived) on plain expiry so a manager can still review it.
 - **Reporting a win**: `/report-win` or the thread's button — either participant picks the winner from a dropdown
   with nothing pre-selected (so you can self-report or concede). Ranks swap only if the challenger won.
-- **Dodges**: after `DODGE_ELIGIBLE_AFTER_MS` (default 48h) with no result, either side can request one via
+- **Dodges**: after `DODGE_ELIGIBLE_AFTER_MS` (default 24h) with no result, either side can request one via
   `/dodge-request` (with a screenshot) or the thread's button. Goes to `#league-managers` for Approve/Deny.
   Approve swaps ranks and closes the thread.
   - Each approved dodge adds 1 to the defender's `DodgesAgainst`: a warning DM at 2, auto-removal at 3.

@@ -53,11 +53,13 @@ function drawCrossIcon(ctx: SKRSContext2D, x: number, y: number, size: number): 
 }
 
 /**
- * Renders a PNG leaderboard graphic of every given ladder row, with a ✅ next to Available players
- * and a ❌ next to players currently in a challenge (Vacation players get neither, just the tag).
+ * Renders a PNG leaderboard graphic of the given ladder rows (one page of the panel), with a ✅ next
+ * to Available players and a ❌ next to players currently in a challenge (Vacation players get
+ * neither, just the tag). The ✅/❌ legend is drawn only when `showLegend` is set (the first page).
  */
-export async function renderLadderImage(rows: LadderRow[]): Promise<Buffer> {
-  const height = HEADER_HEIGHT + LEGEND_HEIGHT + Math.max(rows.length, 1) * ROW_HEIGHT + PADDING;
+export async function renderLadderImage(rows: LadderRow[], title: string, showLegend: boolean): Promise<Buffer> {
+  const legendHeight = showLegend ? LEGEND_HEIGHT : 0;
+  const height = HEADER_HEIGHT + legendHeight + Math.max(rows.length, 1) * ROW_HEIGHT + PADDING;
   const canvas = createCanvas(WIDTH, height);
   const ctx = canvas.getContext("2d");
 
@@ -69,7 +71,7 @@ export async function renderLadderImage(rows: LadderRow[]): Promise<Buffer> {
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 28px sans-serif";
   ctx.textBaseline = "alphabetic";
-  ctx.fillText("Ladder Rankings", PADDING, 44);
+  ctx.fillText(title, PADDING, 44);
   ctx.strokeStyle = "#43444b";
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -78,19 +80,20 @@ export async function renderLadderImage(rows: LadderRow[]): Promise<Buffer> {
   ctx.stroke();
 
   // Legend
-  const legendIcon = 18;
-  const legendY = HEADER_HEIGHT + (LEGEND_HEIGHT - legendIcon) / 2 - 6;
-  ctx.font = "15px sans-serif";
-  ctx.fillStyle = "#b5b6bc";
-  drawCheckIcon(ctx, PADDING, legendY, legendIcon);
-  ctx.fillStyle = "#b5b6bc";
-  ctx.fillText("Available", PADDING + legendIcon + 8, legendY + 14);
-  const crossX = PADDING + legendIcon + 8 + ctx.measureText("Available").width + 24;
-  drawCrossIcon(ctx, crossX, legendY, legendIcon);
-  ctx.fillStyle = "#b5b6bc";
-  ctx.fillText("In a challenge", crossX + legendIcon + 8, legendY + 14);
+  if (showLegend) {
+    const legendIcon = 18;
+    const legendY = HEADER_HEIGHT + (LEGEND_HEIGHT - legendIcon) / 2 - 6;
+    ctx.font = "15px sans-serif";
+    drawCheckIcon(ctx, PADDING, legendY, legendIcon);
+    ctx.fillStyle = "#b5b6bc";
+    ctx.fillText("Available", PADDING + legendIcon + 8, legendY + 14);
+    const crossX = PADDING + legendIcon + 8 + ctx.measureText("Available").width + 24;
+    drawCrossIcon(ctx, crossX, legendY, legendIcon);
+    ctx.fillStyle = "#b5b6bc";
+    ctx.fillText("In a challenge", crossX + legendIcon + 8, legendY + 14);
+  }
 
-  const rowsTop = HEADER_HEIGHT + LEGEND_HEIGHT;
+  const rowsTop = HEADER_HEIGHT + legendHeight;
 
   if (rows.length === 0) {
     ctx.fillStyle = "#b5b6bc";

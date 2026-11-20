@@ -24,7 +24,7 @@ requests with screenshot evidence.
 | `#register` | Sign Up, Leave Ladder, Vacation, and Extended Vacation buttons (all self-service, except approvals). |
 | `#challenges` | Two pinned, self-updating panels: the **Challenge** button and the **Active Challenges** list. |
 | Results channel | Permanent log — every challenge, result, dodge, extension, and admin action. Nothing here auto-deletes. |
-| `#rankings` | Pinned Top 10 leaderboard image only (✅ available, ❌ in a challenge). |
+| `#rankings` | Pinned Top 10 leaderboard only (✅ available, ❌ in a challenge, 🌴 vacation). |
 | `#league-managers` | Pending approvals (signups, vacations, dodges, extensions) plus the pinned NvD Admin dashboard. |
 | `#announcements` | Flashy post on every approved signup. |
 
@@ -90,8 +90,8 @@ requests with screenshot evidence.
 - **All Time Stats**: permanent, append-only record for every participant. `Wins`/`Losses` climb from a match at
   any rank; `Defends` counts consecutive rank-1 title defenses (preserved across a reclaim); `DodgesAgainst` is a
   permanent counter. None of this resets with a season.
-- **Top 10 leaderboard**: a single pinned post in `#rankings`, rendered with `@napi-rs/canvas`, with a ✅ next to
-  available players and a ❌ next to players in a challenge; refreshed in place on any rank or challenge change.
+- **Top 10 leaderboard**: a single pinned text post in `#rankings`, with ✅ next to available players, ❌ next to
+  players in a challenge and 🌴 next to players on vacation; refreshed in place on any rank or challenge change.
 
 ## NvD Admin dashboard
 

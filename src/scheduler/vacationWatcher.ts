@@ -129,7 +129,7 @@ async function runPasses(client: Client): Promise<void> {
     const ladderChanged = await checkVacations(client);
     await checkExtendedVacations(client);
     // Extended Vacation entries hold no ladder row, so only a Vacation→Extended Vacation
-    // escalation (which removes and compacts a Ladder row) can change what Top 10 shows.
+    // escalation (which removes and compacts a Ladder row) can change what the rankings panel shows.
     if (ladderChanged) {
       await refreshTop10Panel(client).catch((err) => console.error("Failed to refresh top 10 panel:", err));
     }

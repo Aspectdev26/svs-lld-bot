@@ -2,6 +2,7 @@ import { EmbedBuilder, type Client, type TextChannel } from "discord.js";
 import { config } from "../config.js";
 import * as matchesRepo from "../sheets/matchesRepo.js";
 import * as ladderRepo from "../sheets/ladderRepo.js";
+import { refreshTop10Panel } from "./top10Panel.js";
 
 const PANEL_TITLE = "⚔️ Active Challenges";
 
@@ -12,6 +13,10 @@ const PANEL_TITLE = "⚔️ Active Challenges";
  * either way.
  */
 export async function refreshActiveChallengesPanel(client: Client): Promise<void> {
+  // Anything that changes the active challenges also changes who's ✅/❌ on the #rankings panel.
+  // Fire-and-forget: that refresh coalesces duplicate triggers on its own.
+  void refreshTop10Panel(client).catch((err) => console.error("Failed to refresh rankings panel:", err));
+
   const channel = await client.channels.fetch(config.channels.challenges);
   if (!channel || !channel.isTextBased()) {
     console.error(`CHALLENGES_CHANNEL_ID (${config.channels.challenges}) is not a text channel`);

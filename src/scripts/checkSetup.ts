@@ -37,7 +37,7 @@ const CHANNELS: { key: keyof typeof config.channels; env: string; label: string;
   {
     key: "rankings",
     env: "RANKINGS_CHANNEL_ID",
-    label: "Rankings (ladder image)",
+    label: "Rankings (Top 10 image)",
     extra: [...PIN, ["Attach Files", PermissionFlagsBits.AttachFiles]],
   },
   {

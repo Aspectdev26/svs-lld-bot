@@ -24,7 +24,7 @@ requests with screenshot evidence.
 | `#register` | Sign Up, Leave Ladder, Vacation, and Extended Vacation buttons (all self-service, except approvals). |
 | `#challenges` | Two pinned, self-updating panels: the **Challenge** button and the **Active Challenges** list. |
 | Results channel | Permanent log — every challenge, result, dodge, extension, and admin action. Nothing here auto-deletes. |
-| `#rankings` | Pinned full-ladder rankings image only (✅ available, ❌ in a challenge). |
+| `#rankings` | Pinned Top 10 leaderboard image only (✅ available, ❌ in a challenge). |
 | `#league-managers` | Pending approvals (signups, vacations, dodges, extensions) plus the pinned NvD Admin dashboard. |
 | `#announcements` | Flashy post on every approved signup. |
 
@@ -90,8 +90,8 @@ requests with screenshot evidence.
 - **All Time Stats**: permanent, append-only record for every participant. `Wins`/`Losses` climb from a match at
   any rank; `Defends` counts consecutive rank-1 title defenses (preserved across a reclaim); `DodgesAgainst` is a
   permanent counter. None of this resets with a season.
-- **Ladder rankings**: a single pinned post in `#rankings` showing every rank, rendered with `@napi-rs/canvas`, with a
-  ✅ next to available players and a ❌ next to players in a challenge; refreshed in place on any rank or challenge change.
+- **Top 10 leaderboard**: a single pinned post in `#rankings`, rendered with `@napi-rs/canvas`, with a ✅ next to
+  available players and a ❌ next to players in a challenge; refreshed in place on any rank or challenge change.
 
 ## NvD Admin dashboard
 
@@ -218,7 +218,7 @@ speed up expiry/warning testing, temporarily lower the relevant `_MS` variables 
 - **NvD Admin dashboard**: exercise each button — Set Rank (mid-ladder shift), Force-Cancel Match, Remove
   Player (removal + match cancellation), Ban/Unban, and Reset Ladder last
   (confirms the season-name modal, match cancellation, rank randomization, and that the old tab is preserved).
-- **Rankings panel**: posts/pins on first startup; updates in place (no duplicate/re-pin) on any rank or challenge change.
+- **Top 10 panel**: posts/pins on first startup; updates in place (no duplicate/re-pin) on any rank or challenge change.
 - **Ladder tab visuals**: header/colors/badges match on sight; a `Challenge` status shows the right `cDate`/`Opp#`
   and clears on resolution; hand-typed `Notes` survive later bot updates.
 - **Results channel**: every announcement type stays up permanently; `#challenges` only ever shows the two pinned,

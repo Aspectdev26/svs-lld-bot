@@ -11,7 +11,7 @@ export function buildLeagueManagerGuideEmbeds(): EmbedBuilder[] {
         "**Channels**\n" +
         `⚔️ <#${config.channels.challenges}> — pinned **Challenge** button + the always-current **Active Challenges** list. Nothing else posts here.\n` +
         `📜 <#${config.channels.challengeResults}> — permanent log of every challenge issued, match result, dodge/extension outcome, sign-up approval, and expiry warning/notice. The place to check "what happened."\n` +
-        `🏆 <#${config.channels.rankings}> — pinned full ladder rankings image (✅ available, ❌ in a challenge), kept updated automatically, with a link to the full sheet.\n` +
+        `🏆 <#${config.channels.rankings}> — pinned Top 10 leaderboard image (✅ available, ❌ in a challenge), kept updated automatically, with a link to the full sheet.\n` +
         `🛡️ this channel — the Dashboard plus every pending approval: sign-ups, dodge requests, and extension requests.\n` +
         `📝 <#${config.channels.register}> — **Sign Up**, **Leave Ladder**, **Request/Return from Vacation**, and **Request/Return from Extended Vacation** buttons.\n` +
         `📢 <#${config.channels.announcements}> — only used when a player leaves the ladder; everything else posts to the results channel above.`,

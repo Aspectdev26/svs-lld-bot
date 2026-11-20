@@ -7,7 +7,7 @@ import { startVacationWatcher } from "./scheduler/vacationWatcher.js";
 import { ensureRegisterPanel } from "./discord/registerPanel.js";
 import { ensureChallengePanel } from "./discord/challengePanel.js";
 import { ensureAdminPanel } from "./discord/adminPanel.js";
-import { ensureLeagueManagerThreadAccess } from "./discord/matchChannels.js";
+import { addLeagueManagersToActiveMatchThreads, ensureLeagueManagerThreadAccess } from "./discord/matchChannels.js";
 import { refreshTop10Panel } from "./discord/top10Panel.js";
 import { refreshActiveChallengesPanel } from "./discord/activeChallengesPanel.js";
 import { ensureSheetTabs } from "./sheets/sheetsClient.js";
@@ -74,6 +74,9 @@ async function main() {
     ensureAdminPanel(client).catch((err) => console.error("Failed to post admin panel:", err));
     ensureLeagueManagerThreadAccess(client).catch((err) =>
       console.error("Failed to grant NvD Admin thread access:", err),
+    );
+    addLeagueManagersToActiveMatchThreads(client).catch((err) =>
+      console.error("Failed to add NvD Admins to active match threads:", err),
     );
     refreshTop10Panel(client).catch((err) => console.error("Failed to post top 10 panel:", err));
     refreshActiveChallengesPanel(client).catch((err) => console.error("Failed to post active challenges panel:", err));

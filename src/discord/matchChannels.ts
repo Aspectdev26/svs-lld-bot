@@ -55,6 +55,43 @@ export async function ensureLeagueManagerThreadAccess(client: Client): Promise<v
   });
 }
 
+/**
+ * Adds every (human) NvD Admin to a private match thread as a member. ManageThreads alone lets
+ * admins *open* a private thread, but Discord never shows it in their sidebar unless they're a
+ * member — so in practice they couldn't find match threads. Never throws: a failure here must not
+ * break match creation.
+ */
+async function addLeagueManagersToThread(thread: ThreadChannel): Promise<void> {
+  try {
+    const role = thread.guild.roles.cache.find((r) => r.name === config.leagueManagerRoleName);
+    if (!role) return;
+    // Full member fetch (needs the GuildMembers intent) so role.members isn't just whoever happens
+    // to be cached.
+    await thread.guild.members.fetch();
+    const admins = role.members.filter((m) => !m.user.bot);
+    const results = await Promise.allSettled(admins.map((m) => thread.members.add(m.id)));
+    results.forEach((r) => {
+      if (r.status === "rejected") console.error(`Failed to add an NvD Admin to match thread ${thread.id}:`, r.reason);
+    });
+  } catch (err) {
+    console.error(`Failed to add NvD Admins to match thread ${thread.id}:`, err);
+  }
+}
+
+/**
+ * Startup backfill: adds NvD Admins to the threads of every match still in progress, so threads
+ * created before admins were auto-added (or while an admin didn't yet have the role) catch up.
+ * Adding an existing member is a no-op on Discord's side.
+ */
+export async function addLeagueManagersToActiveMatchThreads(client: Client): Promise<void> {
+  const pending = await matchesRepo.getPendingMatches();
+  for (const match of pending) {
+    if (!match.channelId) continue;
+    const channel = await client.channels.fetch(match.channelId).catch(() => null);
+    if (channel?.isThread()) await addLeagueManagersToThread(channel);
+  }
+}
+
 export function matchActionRow(matchId: string): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`matchch_report:${matchId}`).setLabel("Report Win").setStyle(ButtonStyle.Success),
@@ -93,6 +130,7 @@ export async function createMatchChannel(
   });
 
   await Promise.all([thread.members.add(challenger.discordUserId), thread.members.add(defender.discordUserId)]);
+  await addLeagueManagersToThread(thread);
 
   await matchesRepo.setChannelId(match.sheetRow, thread.id);
 

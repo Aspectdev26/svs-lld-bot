@@ -51,8 +51,9 @@ requests with screenshot evidence.
   skipped, not counted. One active match per player at a time.
 - **Post-loss cooldown**: 24h (`CHALLENGE_COOLDOWN_MS`) before re-challenging the exact player you just lost to;
   other targets are unaffected.
-- **Match threads**: a private thread under `#challenges`, visible to both participants; NvD Admins get access
-  via a one-time `ManageThreads` role grant rather than a per-thread invite. Has **Report Win**, **Request Dodge**,
+- **Match threads**: a private thread under `#challenges`, visible to both participants; every NvD Admin is also
+  added as a member (so it shows in their sidebar), on creation and again for active matches at startup. This needs
+  the **Server Members Intent** enabled in the Developer Portal. Has **Report Win**, **Request Dodge**,
   and **Request Extension** buttons. Deleted automatically on result/dodge-approval; left in place (and
   auto-archived) on plain expiry so a manager can still review it.
 - **Reporting a win**: `/report-win` or the thread's button — either participant picks the winner from a dropdown

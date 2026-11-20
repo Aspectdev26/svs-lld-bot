@@ -60,7 +60,7 @@ async function refreshOnce(client: Client): Promise<void> {
     .setColor(0xf1c40f)
     .setTimestamp(new Date());
   const embeds = [embed];
-  const files = [{ attachment: await renderLadderImage(top10, "Top 10 Ladder", true), name: IMAGE_FILENAME }];
+  const files = [{ attachment: await renderLadderImage(top10, "Top 10 Ladder"), name: IMAGE_FILENAME }];
 
   const titles = [PANEL_TITLE, ...LEGACY_PANEL_TITLES];
   const { items: pinned } = await textChannel.messages.fetchPins();

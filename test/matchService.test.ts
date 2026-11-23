@@ -105,6 +105,22 @@ describe("reportWin", () => {
     if (!result.ok) expect(result.reason).toMatch(/not a participant/);
   });
 
+  it("lets an NvD Admin report a result for a match they aren't in", async () => {
+    vi.mocked(matchesRepo.getMatchById).mockResolvedValue(matchRow());
+    vi.mocked(ladderRepo.findEntry).mockImplementation(async (userId) =>
+      userId === "u1" ? ladderRow({ sheetRow: 2, discordUserId: "u1", rank: 3 }) : ladderRow({ sheetRow: 3, discordUserId: "u2", rank: 1 }),
+    );
+    const result = await reportWin("admin", "m1", "u2", { asAdmin: true });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.match.winnerUserId).toBe("u2");
+  });
+
+  it("still requires an admin's chosen winner to be a participant", async () => {
+    vi.mocked(matchesRepo.getMatchById).mockResolvedValue(matchRow());
+    const result = await reportWin("admin", "m1", "stranger", { asAdmin: true });
+    expect(result.ok).toBe(false);
+  });
+
   it("rejects when the selected winner isn't a participant", async () => {
     vi.mocked(matchesRepo.getMatchById).mockResolvedValue(matchRow());
     const result = await reportWin("u1", "m1", "stranger");

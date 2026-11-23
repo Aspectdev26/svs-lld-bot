@@ -83,13 +83,17 @@ import {
   handleSetRankStart,
   handleSetRankUserSelect,
   handleSetRankModal,
+  handleAdminReportWinStart,
+  handleAdminReportWinMatchSelect,
+  handleAdminWinnerSelect,
+  REPORTWIN_MATCH_SELECT_ID,
 } from "../components/admin/adminMatchAndRank.js";
 import {
   handlePendingSignupsStart,
   handlePendingSignupSelect,
   PENDING_SIGNUPS_SELECT_ID,
 } from "../components/admin/adminPendingSignups.js";
-import { WINNER_SELECT_PREFIX } from "../reportWinFlow.js";
+import { ADMIN_WINNER_SELECT_PREFIX, WINNER_SELECT_PREFIX } from "../reportWinFlow.js";
 import { handleWinnerSelect } from "../components/reportWinSelect.js";
 
 const MATCH_CHANNEL_BUTTON_PREFIXES = [
@@ -158,6 +162,10 @@ export function registerInteractionEvent(client: Client): void {
           await handleVacationSelect(interaction);
         } else if (interaction.customId.startsWith(WINNER_SELECT_PREFIX_WITH_COLON)) {
           await handleWinnerSelect(interaction);
+        } else if (interaction.customId === REPORTWIN_MATCH_SELECT_ID) {
+          await handleAdminReportWinMatchSelect(interaction);
+        } else if (interaction.customId.startsWith(`${ADMIN_WINNER_SELECT_PREFIX}:`)) {
+          await handleAdminWinnerSelect(interaction);
         }
         return;
       }
@@ -207,6 +215,8 @@ export function registerInteractionEvent(client: Client): void {
           await handleCancelMatchStart(interaction);
         } else if (ADMIN_CANCEL_RESOLVE_PREFIXES.some((p) => interaction.customId.startsWith(p))) {
           await handleCancelMatchResolve(interaction);
+        } else if (interaction.customId === ADMIN_BUTTON_IDS.reportWin) {
+          await handleAdminReportWinStart(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.setRank) {
           await handleSetRankStart(interaction);
         } else if (interaction.customId === ADMIN_BUTTON_IDS.pendingSignups) {

@@ -9,8 +9,18 @@ import { formatChallengeDate } from "../util/formatDate.js";
 import type { Rank1Update } from "./rank1Tracker.js";
 import type { LadderRow, MatchRow } from "../types.js";
 
+/**
+ * IDs are written to Sheets with USER_ENTERED, which turns anything number-like into a number:
+ * an all-digit ID like "04413404" comes back as "4413404", and "1234e567" as scientific notation,
+ * so looking the row up by ID afterwards fails. Re-roll until the ID has a letter other than "e",
+ * which can never parse as a number.
+ */
 export function genId(): string {
-  return randomUUID().slice(0, 8);
+  let id: string;
+  do {
+    id = randomUUID().slice(0, 8);
+  } while (!/[a-df]/.test(id));
+  return id;
 }
 
 /** A player is limited to one pending match at a time. */
@@ -105,13 +115,19 @@ export type ReportWinResult =
  * one of the two participants, while `winnerUserId` is whichever side they picked from the
  * winner dropdown (their own side for a self-report, or the opponent's to concede/correct).
  */
-export async function reportWin(reporterUserId: string, matchId: string, winnerUserId: string): Promise<ReportWinResult> {
+export async function reportWin(
+  reporterUserId: string,
+  matchId: string,
+  winnerUserId: string,
+  opts: { asAdmin?: boolean } = {},
+): Promise<ReportWinResult> {
   const match = await matchesRepo.getMatchById(matchId);
   if (!match || match.status !== "Pending") {
     return { ok: false, reason: "that match isn't currently active." };
   }
   const participants = [match.challengerUserId, match.defenderUserId];
-  if (!participants.includes(reporterUserId)) {
+  // NvD Admins (via the dashboard's Report Win) can report on behalf of either player.
+  if (!opts.asAdmin && !participants.includes(reporterUserId)) {
     return { ok: false, reason: "you're not a participant in that match." };
   }
   if (!participants.includes(winnerUserId)) {

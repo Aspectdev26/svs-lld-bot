@@ -7,6 +7,7 @@ export const ADMIN_BUTTON_IDS = {
   ban: "admin_ban_start",
   unban: "admin_unban_start",
   cancelMatch: "admin_cancel_start",
+  reportWin: "admin_reportwin_start",
   setRank: "admin_setrank_start",
   pendingSignups: "admin_pending_signups_start",
   vacation: "admin_vacation_start",
@@ -28,6 +29,8 @@ function buildPanelContent() {
         "**Ban Player** — removes them and blocks future sign-ups for the chosen scope, with a reason.\n" +
         "**Unban** — reverses an existing ban.\n" +
         "**Force-Cancel Match** — voids an active match with no rank change (for disputes/mistakes).\n" +
+        "**Report Win** — pick an active match and its winner to report the result on a player's behalf, " +
+        "same as if they'd reported it themselves.\n" +
         "**Set Rank** — manually moves a player to an exact rank, shifting others out of the way.\n" +
         "**Pending Sign-ups** — view and approve/deny any sign-up request, even if its original post in this " +
         "channel never showed up.\n" +
@@ -49,6 +52,7 @@ function buildPanelContent() {
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.unban).setLabel("Unban").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.cancelMatch).setLabel("Force-Cancel Match").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.reportWin).setLabel("Report Win").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(ADMIN_BUTTON_IDS.setRank).setLabel("Set Rank").setStyle(ButtonStyle.Primary),
   );
   const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(

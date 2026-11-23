@@ -23,6 +23,9 @@ import { notify } from "../../notify.js";
 import { refreshTop10Panel } from "../../top10Panel.js";
 import { refreshActiveChallengesPanel } from "../../activeChallengesPanel.js";
 import { scheduleReplyCleanup, scheduleMessageCleanup } from "../../ephemeralCleanup.js";
+import { ADMIN_WINNER_SELECT_PREFIX, buildWinnerPrompt, finalizeReportWin } from "../../reportWinFlow.js";
+
+export const REPORTWIN_MATCH_SELECT_ID = "admin_reportwin_match";
 
 const CANCEL_SELECT_ID = "admin_cancel_select";
 const CANCEL_CONFIRM_PREFIX = "admin_cancel_confirm";
@@ -121,6 +124,67 @@ export async function handleCancelMatchResolve(interaction: ButtonInteraction): 
   await refreshActiveChallengesPanel(interaction.client).catch((err) =>
     console.error("Failed to refresh active challenges panel:", err),
   );
+}
+
+// ---------- Report win (on a player's behalf) ----------
+
+export async function handleAdminReportWinStart(interaction: ButtonInteraction): Promise<void> {
+  if (!(await requireLeagueManager(interaction))) return;
+
+  const [pending, ladder] = await Promise.all([matchesRepo.getPendingMatches(), ladderRepo.getLadder()]);
+  if (pending.length === 0) {
+    await interaction.reply({ content: "There are no active matches to report.", ephemeral: true });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
+
+  const nameFor = (userId: string) => ladder.find((r) => r.discordUserId === userId)?.discordName ?? "Unknown";
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(REPORTWIN_MATCH_SELECT_ID)
+    .setPlaceholder("Choose a match")
+    .addOptions(
+      pending.slice(0, 25).map((m) => ({
+        label: `${nameFor(m.challengerUserId)} vs ${nameFor(m.defenderUserId)}`.slice(0, 100),
+        value: m.matchId,
+      })),
+    );
+  await interaction.reply({
+    content: "**Select the match to report a result for:**",
+    components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)],
+    ephemeral: true,
+  });
+}
+
+export async function handleAdminReportWinMatchSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!(await requireLeagueManager(interaction))) return;
+
+  const prompt = await buildWinnerPrompt(interaction.values[0], interaction.user.id, { asAdmin: true });
+  if (!prompt.ok) {
+    await interaction.update({ content: prompt.reason, components: [] });
+    scheduleReplyCleanup(interaction);
+    return;
+  }
+  await interaction.update({
+    content: `**Who won match \`${prompt.match.matchId}\`?** The result applies as soon as you pick.`,
+    components: [prompt.row],
+  });
+}
+
+export async function handleAdminWinnerSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  if (!(await requireLeagueManager(interaction))) return;
+
+  const matchId = interaction.customId.slice(`${ADMIN_WINNER_SELECT_PREFIX}:`.length);
+  const winnerUserId = interaction.values[0];
+
+  // Ack before the multi-write reportWin call, which can exceed Discord's 3s deadline.
+  await interaction.update({ content: "Reporting result…", components: [] });
+
+  const result = await finalizeReportWin(interaction.client, interaction.user.id, matchId, winnerUserId, { asAdmin: true });
+  await interaction.editReply({
+    content: result.ok ? `Win reported: <@${winnerUserId}> won the match.` : `Couldn't report that win: ${result.reason}`,
+  });
+  scheduleReplyCleanup(interaction);
 }
 
 // ---------- Set rank ----------

@@ -61,13 +61,41 @@ export async function ensureLeagueManagerThreadAccess(client: Client): Promise<v
  * member — so in practice they couldn't find match threads. Never throws: a failure here must not
  * break match creation.
  */
+/**
+ * One full member fetch per guild per process. Discord rate-limits that gateway request (opcode 8)
+ * to roughly once per 30s per guild, so fetching per thread failed for every thread after the
+ * first in the startup backfill. After the first fetch, the GuildMembers intent keeps the cache
+ * (including role changes) up to date on its own. A failed fetch waits out the rate limit, retries
+ * once, and is forgotten if it still fails so the next call tries again.
+ */
+const memberFetches = new Map<string, Promise<void>>();
+
+function ensureMembersLoaded(guild: Guild): Promise<void> {
+  let pending = memberFetches.get(guild.id);
+  if (!pending) {
+    pending = (async () => {
+      try {
+        await guild.members.fetch();
+      } catch (err) {
+        const retryAfter = (err as { data?: { retry_after?: number } }).data?.retry_after;
+        if (retryAfter === undefined) throw err;
+        await new Promise((r) => setTimeout(r, Math.ceil(retryAfter * 1000) + 1000));
+        await guild.members.fetch();
+      }
+    })();
+    pending.catch(() => memberFetches.delete(guild.id));
+    memberFetches.set(guild.id, pending);
+  }
+  return pending;
+}
+
 async function addLeagueManagersToThread(thread: ThreadChannel): Promise<void> {
   try {
     const role = thread.guild.roles.cache.find((r) => r.name === config.leagueManagerRoleName);
     if (!role) return;
-    // Full member fetch (needs the GuildMembers intent) so role.members isn't just whoever happens
+    // Full member list (needs the GuildMembers intent) so role.members isn't just whoever happens
     // to be cached.
-    await thread.guild.members.fetch();
+    await ensureMembersLoaded(thread.guild);
     const admins = role.members.filter((m) => !m.user.bot);
     const results = await Promise.allSettled(admins.map((m) => thread.members.add(m.id)));
     results.forEach((r) => {
@@ -132,8 +160,6 @@ export async function createMatchChannel(
   await Promise.all([thread.members.add(challenger.discordUserId), thread.members.add(defender.discordUserId)]);
   await addLeagueManagersToThread(thread);
 
-  await matchesRepo.setChannelId(match.sheetRow, thread.id);
-
   const expiresUnix = Math.floor(Date.parse(match.expiresAt) / 1000);
   const embed = new EmbedBuilder()
     .setTitle("Match thread")
@@ -157,6 +183,16 @@ export async function createMatchChannel(
   // get one thread post like this, so being findable via fetchPins is enough (same trick as the
   // Active Challenges panel).
   await sent.pin().catch((err) => console.error(`Failed to pin match thread message for ${match.matchId}:`, err));
+
+  // Recorded after the panel is posted, so a sheet failure can't leave players in a thread with
+  // no buttons.
+  if (match.sheetRow > 0) {
+    await matchesRepo
+      .setChannelId(match.sheetRow, thread.id)
+      .catch((err) => console.error(`Failed to record thread ${thread.id} for match ${match.matchId}:`, err));
+  } else {
+    console.error(`Match ${match.matchId} has no known sheet row; thread ${thread.id} not recorded in the sheet`);
+  }
 
   return thread;
 }

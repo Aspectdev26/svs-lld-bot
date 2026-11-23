@@ -106,6 +106,7 @@ so new buttons don't require re-pinning by hand):
 | **Ban Player** 🔴 | Removes the player from the ladder and blocks future signups. |
 | **Unban** | Lifts an active ban. |
 | **Force-Cancel Match** | Voids any active match, no rank change. |
+| **Report Win** | Pick an active match and its winner to report the result on a player's behalf (normal rank/stats/points handling; the announcement notes which admin reported it). |
 | **Set Rank** | Moves one player to an exact rank; everyone between shifts by one. |
 | **Pending Sign-ups** | Lists/approves signup requests, including any that failed to auto-post. |
 | **Vacation** | Manual toggle for one player (see [Vacation](#vacation)). |

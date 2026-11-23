@@ -211,6 +211,13 @@ so the whole server can see what changed and who did it.
      self-service flow, this toggle BLOCKS instead of auto-forfeiting if the player
      has an active match — you'll need to resolve or cancel it first.
 
+11. REPORT WIN
+   - Pick any currently active match, then pick who won.
+   - Applies the result exactly as if a player had reported it (rank swap, stats,
+     points, thread deleted); the #challenges announcement notes which admin
+     reported it.
+   - Use this when players tell you the result but don't report it themselves.
+
 
 ===============================================================================
 HOW STATS ARE TRACKED
